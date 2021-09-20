@@ -1367,7 +1367,7 @@ const generateSnapshots = async () => {
       ${' '.repeat(15)}me  ${(p.my_fee_rate + 'ppm').padStart(7)} [-${local}--|--${remote}-] ${(p.inbound_fee_rate + 'ppm').padEnd(7)} ${p.alias} (./peers/${p.public_key.slice(0, 10)}.json) ${p.balance.toFixed(2)}b ${p.flowMarginWeight}w ${p.flowMarginWeight > 0 ? '<--R_in!' : ''}${p.flowMarginWeight < 0 ? 'R_out!-->' : ''}
       \x1b[2m${routeIn.padStart(26)} <---- routing ----> ${routeOut.padEnd(23)} +${routeOutEarned.padEnd(17)} ${routeInPpm.padStart(5)}|${routeOutPpm.padEnd(10)} ${('#' + p.routed_in_count).padStart(5)}|#${p.routed_out_count.toString().padEnd(5)}\x1b[0m
       \x1b[2m${rebIn.padStart(26)} <-- rebalancing --> ${rebOut.padEnd(23)} -${rebOutFees.padEnd(17)} ${rebInPpm.padStart(5)}|${rebOutPpm.padEnd(10)} ${('#' + p.rebalanced_in_count).padStart(5)}|#${p.rebalanced_out_count.toString().padEnd(5)}\x1b[0m
-      \x1b[2m${' '.repeat(17)}<-- Rebalaces-in cost rate (ppm): ${rebalanceHistory}\x1b[0m
+      \x1b[2m${' '.repeat(17)}<-- Rebalances-in cost rate (ppm): ${rebalanceHistory}\x1b[0m
       \x1b[2m${' '.repeat(17)}${lastRoutedInString} / ${lastRoutedOutString}\x1b[0m
     `
   }
