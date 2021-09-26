@@ -1702,12 +1702,11 @@ const generateSnapshots = async () => {
   //   JSON.stringify(rebalances, fixJSON, 2)
   // )
 
-  const message = `${DAYS_FOR_STATS} days:
-
-  earned: ${pretty(totalEarnedFromForwards)}
-  spent: ${pretty(totalFeesPaid + totalChainFees)}
-  net: ${pretty(totalProfit)}
-  routed: ${
+  const message = `🌷 Stats: ${DAYS_FOR_STATS} days:
+earned: ${pretty(totalEarnedFromForwards)} sats
+spent: ${pretty(totalFeesPaid + totalChainFees)} sats
+net: ${pretty(totalProfit)} sats
+routed: ${
     median(
       forwardsAll.map(f => f.fee_mtokens / 1000.0),
       { f: pretty, pr: 1 }
