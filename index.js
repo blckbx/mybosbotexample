@@ -1,8 +1,8 @@
 // NOT SAFE TO RUN
 
-import fs from 'fs' // to read/write log files
-import dns from 'dns' // to check if node is online
-import bos from './bos.js' // wrapper for bos
+import fs from 'fs' // comes with nodejs, to read/write log files
+import dns from 'dns' // comes with nodejs, to check if node is online
+import bos from './bos.js' // my wrapper for bos
 
 const { min, max, trunc, floor, abs, random, sqrt } = Math
 
@@ -17,13 +17,8 @@ const MINUTES_BETWEEN_STEPS = 5
 const MAX_REBALANCE_SATS = 400e3
 // unbalanced sats below this can stop (bos rebalance exits <50k)
 const MIN_REBALANCE_SATS = 51e3
-// sats to balance via keysends
-const MAX_REBALANCE_SATS_SEND = 212121
-// rebalance with faster keysends after bos rebalance works
-// (faster but higher risk of stuck sats so I send less)
-const USE_KEYSENDS_AFTER_BALANCE = false
-// allow parallel rebalances
-const ALLOW_PARALLEL_REBALANCES = false
+// might cause tor issues if too much bandwidth being used maybe?
+const MAX_PARALLEL_REBALANCES = 10
 
 // channels smaller than this not necessary to balance or adjust fees for
 // usually special cases anyway
@@ -36,47 +31,42 @@ const MIN_CHAN_SIZE = 1900e3
 const SAFETY_MARGIN = 1.75
 // minimum flat safety ppm margin & min for remote heavy channels
 const SAFETY_MARGIN_FLAT = 200
-
 // rebalancing fee rates below this aren't considered for rebalancing
-const MIN_FEE_RATE_FOR_REBALANCE = 0
-
-// minimum ppm ever possible
-const MIN_PPM_ABSOLUTE = 0
-// any ppm above this is not considered for fees, rebalancing, or suggestions
-const MAX_PPM_ABSOLUTE = 1500
-
-// as 0-profit fee rate increases, fee rate where where proportional
-// fee takes over flat one is
-// (break even fee rate) * SAFETY_MARGIN = SAFETY_MARGIN_FLAT
-
-// smallest amount of sats necessary to consider a side not drained
-const MIN_SATS_PER_SIDE = 1000e3 
-
-// how much error to use for balance calcs
-// const BALANCE_DEV = 0.1
+const MIN_FEE_RATE_FOR_REBALANCE = 1
 
 // max size of fee adjustment to target ppm (upward)
 const NUDGE_UP = 0.0069
 // max size of fee adjustment to target ppm (downward)
-const NUDGE_DOWN = 0.0069
-
+const NUDGE_DOWN = NUDGE_UP / 2
 // max days since last successful routing out to allow increasing fee
 const DAYS_FOR_FEE_INCREASE = 1.2
 // min days of no routing activity before allowing reduction in fees
 const DAYS_FOR_FEE_REDUCTION = 2.1
 
+// minimum ppm ever possible
+const MIN_PPM_ABSOLUTE = 0
+// any ppm above this is not considered for fees, rebalancing, or suggestions
+const MAX_PPM_ABSOLUTE = 1500
+// smallest amount of sats necessary to consider a side not drained
+//const MIN_SATS_PER_SIDE = 1000e3 
+
 // max minutes to spend per rebalance try
 const MINUTES_FOR_REBALANCE = 5
 // max minutes to spend per keysend try
-const MINUTES_FOR_SEND = 3 // ceil(MINUTES_FOR_REBALANCE / 2)
+// const MINUTES_FOR_SEND = 3
+
 // time between retrying same good pair
 const MIN_MINUTES_BETWEEN_SAME_PAIR = (MINUTES_BETWEEN_STEPS + MINUTES_FOR_REBALANCE) * 2
-// max repeats to balance if successful
-const MAX_BALANCE_REPEATS = 69
 
 // allow adjusting fees
 const ADJUST_FEES = false
 
+// as 0-profit fee rate increases, fee rate where where proportional
+// fee takes over flat one is
+// (break even fee rate) * SAFETY_MARGIN = SAFETY_MARGIN_FLAT
+
+// how much error to use for balance calcs
+// const BALANCE_DEV = 0.1
 // how far back to look for routing stats, must be longer than any other DAYS setting
 const DAYS_FOR_STATS = 7
 
@@ -86,8 +76,8 @@ const DAYS_FOR_STATS = 7
 // const MIN_SAMPLE_SIZE = 3
 
 // fraction of peers that need to be offline to restart tor service
-const PEERS_OFFLINE_MAXIMUM = 0.33
-const ALLOW_BOS_RECONNECT = false
+const PEERS_OFFLINE_MAXIMUM = 0.33 // 33%
+const ALLOW_BOS_RECONNECT = true
 const ALLOW_TOR_RESET = false
 
 // hours between running bos reconnect
@@ -107,8 +97,8 @@ const WEIGHT_OPTIONS = {
   UNBALANCED_SATS_SQRT: peer => trunc(sqrt(peer.unbalancedSats)),
   UNBALANCED_SATS_SQRTSQRT: peer => trunc(sqrt(sqrt(peer.unbalancedSats))),
   CHANNEL_SIZE: peer => peer.totalSats,
-  FLOW_MARGIN: peer => abs(peer.flowMarginWeight),
-  FLOW_MARGIN_SQRT: peer => trunc(sqrt(abs(peer.flowMarginWeight))),
+  FLOW_MARGIN: peer => abs(peer.flowMarginWithRules),
+  FLOW_MARGIN_SQRT: peer => trunc(sqrt(abs(peer.flowMarginWithRules))),
   FLAT: () => 1
 }
 const WEIGHT = WEIGHT_OPTIONS.FLOW_MARGIN_SQRT
@@ -131,14 +121,14 @@ const mynode = {
 const runBot = async () => {
   console.boring(`${getDate()} runBot()`)
 
-  // try a rebalance
-  await runBotUpdateStep()
+  // check if time for bos reconnect
+  await runBotReconnectCheck()
 
   // check if time for updating fees
   await runUpdateFeesCheck()
 
-  // check if time for bos reconnect
-  await runBotReconnectCheck()
+  await runBotRebalanceOrganizer()
+  // await sleep(1 * 60 * 1000, { msg: 'Experimental rebalance done' }) // temporary
 
   // pause
   await sleep(MINUTES_BETWEEN_STEPS * 60 * 1000)
@@ -147,206 +137,290 @@ const runBot = async () => {
   runBot()
 }
 
-const runBotUpdateStep = async () => {
+// experimental parallel rebalancing function (unsplit, wip)
+const runBotRebalanceOrganizer = async () => {
+  console.boring(`${getDate()} runBotRebalaceOrganizer()`)
 
-  if(ALLOW_PARALLEL_REBALANCES) {
-    console.boring(`${getDate()} runBotUpdateStep() v2 speed up`)
-    // get peers
-    const allPeers = await runBotGetPeers()
-    // get my fee rates
-    //const getMyFees = await bos.getFees()
+  // match up peers
+  // high weight lets channels get to pick good peers first (not always to occasionally search for better matches)
+  const peers = await runBotGetPeers()
+  // make a list of remote heavy and local heavy peers via balance check
+  const remoteHeavyPeers = rndWeightedSort(peers.filter(includeForRemoteHeavyRebalance), WEIGHT)
+  const localHeavyPeers = rndWeightedSort(peers.filter(includeForLocalHeavyRebalance), WEIGHT)
+  const [nRHP, nLHP] = [remoteHeavyPeers.length, localHeavyPeers.length]
 
-    // let's add some more properties for each peer
-    for (const peer of allPeers) {
-      peer.localSats = peer.outbound_liquidity || 0
-      peer.remoteSats = peer.inbound_liquidity || 0
-      peer.totalSats = peer.localSats + peer.remoteSats
-      peer.balance = peer.localSats / peer.totalSats
-      peer.satsOffBalance = Math.abs(peer.localSats - peer.remoteSats) * 0.5
+  
+  if (VERBOSE) {
+    console.log(`${getDate()} Peer weight / balance / alias`)
+    for (const p of localHeavyPeers) {
+      const weight = WEIGHT(p)
+      const w = pretty(weight).padStart(13)
+      const b = p.balance.toFixed(2)
+      console.log(`Local-heavy: ${w}w ${b}b ${ca(p.alias).padEnd(30)}`)
     }
-    // split peers by remote heavy and local heavy
-    const localHeavyPeers = allPeers.filter(includeForLocalHeavyRebalance)
-    const remoteHeavyPeers = allPeers.filter(includeForRemoteHeavyRebalance)
-    console.log(`Sorting ${localHeavyPeers.length} localHeavyPeers & ${remoteHeavyPeers.length} remoteHeavyPeers...`)
-    // assemble list of matching peers and how much to rebalance
-    const matchups = []
-    // if there's at least one of each
-    while (localHeavyPeers.length > 0 && remoteHeavyPeers.length > 0) {
-      // pick random peer index from both arrays
-      const randomLocalIndex = trunc(random() * localHeavyPeers.length)
-      const randomRemoteIndex = trunc(random() * remoteHeavyPeers.length)
-      // get actual peers
-      const localHeavy = localHeavyPeers[randomLocalIndex]
-      const remoteHeavy = remoteHeavyPeers[randomRemoteIndex]
-      // max amount to rebalance is the smaller sats off-balance between the two
-      const maxSatsToRebalance = trunc(min(localHeavy.satsOffBalance, remoteHeavy.satsOffBalance, MAX_REBALANCE_SATS))
-      // grab my outgoing fee for remote heavy peer
-      const myOutgoingFee = localHeavy.my_fee_rate //getMyFees[remoteHeavy.public_key]
-      const maxRebalanceFee = subtractSafety(myOutgoingFee)
-      if (maxRebalanceFee < MIN_FEE_RATE_FOR_REBALANCE) {
-        // remove this remote heavy channel from consideration
-        remoteHeavyPeers.splice(randomRemoteIndex, 1)
-        // move onto next random pair
-        continue
-      }
-      console.log(
-        `Adding match: ${localHeavy.alias} (${localHeavy.my_fee_rate}ppm) ${localHeavy.balance.toFixed(1)}b -->` +
-          ` ${remoteHeavy.balance.toFixed(1)}b ${remoteHeavy.alias} (${remoteHeavy.inbound_fee_rate}ppm): ${maxSatsToRebalance}sats` +
-          ` @ ${maxRebalanceFee}ppm max-fee`
-      )
-      // add this peer pair to matchups
-      matchups.push({
-        localHeavy,
-        remoteHeavy,
-        maxSatsToRebalance,
-        myOutgoingFee,
-        maxRebalanceFee
-      })
-      // remove these peers from peer lists
-      localHeavyPeers.splice(randomLocalIndex, 1)
-      remoteHeavyPeers.splice(randomRemoteIndex, 1)
-      // break
+    console.log('')
+    for (const p of remoteHeavyPeers) {
+      const weight = WEIGHT(p)
+      const w = pretty(weight).padStart(12)
+      const b = p.balance.toFixed(2)
+      console.log(`Remote-heavy: ${w}w ${b}b ${ca(p.alias).padEnd(30)}`)
     }
-
-    let tasksDone = 0
-    // how to launch every task & return results
-    const handleRebalance = async matchedPair => {
-      const { localHeavy, remoteHeavy, maxSatsToRebalance, myOutgoingFee, maxRebalanceFee } = matchedPair
-
-      const startedAt = Date.now()
-      const resBalance = await bos.rebalance(
-        {
-          fromChannel: localHeavy.public_key,
-          toChannel: remoteHeavy.public_key,
-          maxSats: maxSatsToRebalance,
-          maxMinutes: MINUTES_FOR_REBALANCE,
-          maxFeeRate: maxRebalanceFee
-        })
-      const taskLength = ((Date.now() - startedAt) / 1000 / 60).toFixed(1) + ' minutes'
-      console.log(
-        `(${++tasksDone}/${matchups.length} rebalances done)` +
-          ` ${localHeavy.alias} --> ${remoteHeavy.alias} rebalance ` +
-          `${resBalance.failed ? 'failed' : 'succeeded'} after ${taskLength}`
-      )
-      return resBalance
-    }
-    // assemble list of launched rebalance tasks
-    const rebalanceTasks = []
-    // launch every task near-simultaneously, small stagger between launch
-    for (const matchedPair of matchups) {
-      rebalanceTasks.push(handleRebalance(matchedPair))
-      await sleep(555, false)
-    }
-    console.log(`\nAll ${rebalanceTasks.length} parallel rebalances launched!\n`)
-
-    // wait until every rebalance task is done & returns a value
-    const rebalanceResults = await Promise.all(rebalanceTasks)
-    console.log(
-      'ALL TASKS DONE:',
-      rebalanceResults.map(r => JSON.stringify(r))
-    )
-    console.boring(`${getDate()} runBotUpdateStep() parallel done`)
-
-  } else {
-
-    console.boring(`${getDate()} runBotUpdateStep()`)
-    // do standard rebalancing one by one
-    let { localChannel, remoteChannel } = await runBotPickRandomPeers()
-
-    if (!localChannel || !remoteChannel) {
-      console.log(`${getDate()} no unbalanced pairs to match`)
-      return undefined
-    }
-
-    // repeat rebalancing while it works
-    for (let r = 1; r <= MAX_BALANCE_REPEATS; r++) {
-      console.log(`\n${getDate()} Balancing run #${r}`)
-
-      const balancing = await runBotRebalancePeers({ localChannel, remoteChannel }, r === 1)
-
-      // on fail check to see if any good previous peer is available
-      if (balancing.failed && r === 1) {
-        localChannel = await findGoodPeer({ localChannel, remoteChannel })
-        if (!localChannel) {
-          console.log(`${getDate()} no good previous pair up available`)
-          break
-        }
-        console.log(`${getDate()} switching to good peer "${localChannel.alias}" 💛💚💙💜`)
-        // r = 0 // restart from run #1
-        continue
-      }
-      // stop repeating if balancing still failed
-      if (balancing.failed && r !== 1) break
-      // update channels for next run
-      await runBotUpdatePeers([localChannel, remoteChannel])
-    }
-    console.boring(`${getDate()} runBotUpdateStep() done`)
   }
+  
+  // assemble list of matching peers and how much to rebalance
+  const matchups = []
+
+  // keep going until one side clear
+  while (localHeavyPeers.length > 0 && remoteHeavyPeers.length > 0) {
+    // get top lucky remote channel
+    const remoteHeavy = remoteHeavyPeers[0]
+
+    // try to see if there's good match for it for local
+    const localHeavyIndexIdeal = findGoodPeerMatch({ remoteChannel: remoteHeavy, peerOptions: localHeavyPeers })
+    // console.log({ localHeavyIndexIdeal }) // temporary
+
+    // use localHeavyIndex if it returns an index, otherwise use top local channel
+    const localHeavyIndexUsed = localHeavyIndexIdeal > -1 ? localHeavyIndexIdeal : 0
+    const localHeavy = localHeavyPeers[localHeavyIndexUsed]
+
+    // max amount to rebalance is the smaller sats off-balance between the two
+    const maxSatsToRebalance = trunc(min(localHeavy.unbalancedSats, remoteHeavy.unbalancedSats))
+
+    // grab my outgoing fee for remote heavy peer
+    const myOutgoingFee = remoteHeavy.my_fee_rate
+    const maxRebalanceFee = subtractSafety(myOutgoingFee)
+
+    // add this peer pair to matchups
+    // run keeps track of n times matchup ran
+    // done keeps track of done tasks
+    // started at keeps track of time taken
+    // results keeps 1+ return values from bos function
+    matchups.push({
+      localHeavy,
+      remoteHeavy,
+      maxSatsToRebalance,
+      myOutgoingFee,
+      maxRebalanceFee,
+      run: 1,
+      done: false,
+      startedAt: Date.now(),
+      results: [],
+      isGoodPeer: localHeavyIndexIdeal > -1
+    })
+
+    // remove these peers from peer lists
+    localHeavyPeers.splice(localHeavyIndexUsed, 1)
+    remoteHeavyPeers.splice(0, 1)
+
+    // stop if limit reached
+    if (matchups.length >= MAX_PARALLEL_REBALANCES) break
+  }
+
+  if (VERBOSE) {
+    console.log(`\n${getDate()} Rebalance matchups from ${nRHP} remote-heavy & ${nLHP} local-heavy peers\n`)
+    for (const match of matchups) {
+      const outOf = ca(match.localHeavy.alias).padStart(30)
+      const into = ca(match.remoteHeavy.alias).padEnd(30)
+      const meAtLH = (match.localHeavy.outbound_liquidity / 1e6).toFixed(1).padStart(4) + 'M'
+      const remAtLH = (match.localHeavy.inbound_liquidity / 1e6).toFixed(1).padStart(4) + 'M'
+      const meAtRH = (match.remoteHeavy.outbound_liquidity / 1e6).toFixed(1).padStart(4) + 'M'
+      const remAtRH = (match.remoteHeavy.inbound_liquidity / 1e6).toFixed(1).padStart(4) + 'M'
+      console.log(
+        `  🕺(me) \x1b[2m${meAtLH} [ ||||->   ] ${remAtLH}\x1b[0m ${outOf}` +
+          ` --> ${into} \x1b[2m${remAtRH} [ ||||->   ] ${meAtRH}\x1b[0m  🕺(me) ` +
+          (match.isGoodPeer ? '💚' : '')
+      )
+    }
+    console.log('')
+  }
+
+  // to keep track of list of launched rebalancing tasks
+  const rebalanceTasks = []
+  const STAGGERED_LAUNCH_MS = 1111 // ms to put between each launch for safety
+  const RETRY_ON_TIMEOUTS = true // experimental
+  // function to launch every rebalance task for a matched pair with
+  const handleRebalance = async matchedPair => {
+    const { localHeavy, remoteHeavy, maxSatsToRebalance, maxRebalanceFee, run, startedAt } = matchedPair
+    const localString = ca(localHeavy.alias).padStart(30)
+    const remoteString = ca(remoteHeavy.alias).padEnd(30)
+    // task launch message
+    console.log(
+      `${getDate()} Starting run #${run} ${localString} --> ${remoteString}` +
+        ` rebalance @ <${maxRebalanceFee} ppm, ${pretty(maxSatsToRebalance).padStart(10)} sats left`
+    )
+    const maxSatsToRebalanceAfterRules = min(maxSatsToRebalance, MAX_REBALANCE_SATS)
+    const resBalance = await bos.rebalance(
+      {
+        fromChannel: localHeavy.public_key,
+        toChannel: remoteHeavy.public_key,
+        maxSats: maxSatsToRebalanceAfterRules,
+        maxMinutes: MINUTES_FOR_REBALANCE,
+        maxFeeRate: maxRebalanceFee,
+        retryOnTimeout: RETRY_ON_TIMEOUTS
+      },
+      undefined,
+      {} // show nothing, too many things happening
+    )
+    const taskLength = ((Date.now() - startedAt) / 1000 / 60).toFixed(1) + ' minutes'
+    matchedPair.results.push(resBalance)
+    if (resBalance.failed) {
+      // fail
+      matchedPair.done = true
+      const tasksDone = matchups.reduce((count, m) => (m.done ? count + 1 : count), 0)
+      const reason = resBalance.msg[1] // 2nd item in error array from bos
+      const reasonString = resBalance.ppmSuggested
+        ? `(Reason: needed ${String(resBalance.ppmSuggested).padStart(4)} ppm) `
+        : `(Reason: ${reason}) `
+      console.log(
+        `${getDate()} Stopping run #${run} ${localString} --> ${remoteString} ${maxRebalanceFee} ppm ` +
+          `rebalance failed ${reasonString}` +
+          `\x1b[2m(${tasksDone}/${matchups.length} done after ${taskLength})\x1b[0m`
+      )
+      // fails to be logged only when there's a useful suggested fee rate
+      if (resBalance.ppmSuggested) {
+        appendRecord({
+          peer: remoteHeavy,
+          newRebalance: {
+            t: Date.now(),
+            ppm: maxRebalanceFee,
+            failed: true,
+            peer: localHeavy.public_key,
+            peerAlias: localHeavy.alias,
+            sats: maxSatsToRebalanceAfterRules
+          }
+        })
+      }
+      return matchedPair
+    } else {
+      // success
+      matchedPair.maxSatsToRebalance -= resBalance.rebalanced
+      matchedPair.run++
+      appendRecord({
+        peer: remoteHeavy,
+        newRebalance: {
+          t: Date.now(),
+          ppm: resBalance.fee_rate,
+          failed: false,
+          peer: localHeavy.public_key,
+          peerAlias: localHeavy.alias,
+          sats: resBalance.rebalanced
+        }
+      })
+      if (matchedPair.maxSatsToRebalance < MIN_REBALANCE_SATS) {
+        // successful & done
+        matchedPair.done = true
+        const tasksDone = matchups.reduce((count, m) => (m.done ? count + 1 : count), 0)
+        console.log(
+          `${getDate()} Completed at #${run} ${localString} --> ${remoteString} ${maxRebalanceFee} ppm max ` +
+            `rebalance succeeded for ${pretty(resBalance.rebalanced)} sats @ ${resBalance.fee_rate} ppm ` +
+            ` & done! 🍾🥂🏆 (${tasksDone}/${matchups.length} done after ${taskLength})`
+        )
+        return matchedPair
+      } else {
+        // successful & keep going
+        console.log(
+          `${getDate()} Updating run #${run} ${localString} --> ${remoteString} ${maxRebalanceFee} ppm max ` +
+            `rebalance succeeded for ${pretty(resBalance.rebalanced)} sats @ ${resBalance.fee_rate} ppm ` +
+            ` & moving onto run #${run + 1} (${pretty(matchedPair.maxSatsToRebalance)} sats left to balance)`
+        )
+        return await handleRebalance(matchedPair)
+      }
+    }
+  }
+
+  // launch every task near-simultaneously, small stagger between launch
+  for (const matchedPair of matchups) {
+    // no await before handleRebalance to not wait
+    rebalanceTasks.push(handleRebalance(matchedPair))
+    await sleep(STAGGERED_LAUNCH_MS, { quiet: true })
+  }
+
+  console.log(
+    `${getDate()}\n\n    All ${rebalanceTasks.length} parallel rebalances launched!\n`
+  )
+
+  // now we wait until every rebalance task is done & returns a value
+  const rebalanceResults = await Promise.all(rebalanceTasks)
+  rebalanceResults.sort((a, b) => b.run - a.run)
+  console.log(
+    `${getDate()} ALL TASKS COMPLETED:\n` +
+      rebalanceResults
+        .map(
+          r =>
+            `${(r.run - 1).toFixed(0).padStart(3)} rebalancing runs done for` +
+            ` ${r.localHeavy.alias} --> ${r.remoteHeavy.alias} `
+        )
+        .join('\n')
+  )
 }
 
-// look into previous rebalances and look for peer
-// with low ppm that has room to balance
-const findGoodPeer = async ({ localChannel, remoteChannel }) => {
+// look into previous rebalances and look if any of peerOptions work
+// return index of suitable peer in peerOptions or -1 if none found
+const findGoodPeerMatch = ({ remoteChannel, peerOptions }) => {
   // start a list of potential candidates
   const localCandidates = []
   const uniquePeers = {}
 
-  // historic rebalancing ppm should be below this level
-  const ppmCheck = subtractSafety(remoteChannel.my_fee_rate)
-
-  // get updated active peer info
-  const peers = await runBotGetPeers()
-
   // get historic info if available
   const logFileData = readRecord(remoteChannel.public_key)
-  // const logFile = BALANCING_LOG_PATH + '/' + remoteChannel.public_key.slice(0, 10) + '.json'
-  // const logFileData = !fs.existsSync(logFile) ? {} : JSON.parse(fs.readFileSync(logFile)) || {}
 
   // remove balancing attempts below basic useful ppm
-  const balancingData = logFileData.rebalance?.filter(b => b.ppm < ppmCheck) || []
+  const balancingData = logFileData.rebalance?.filter(b => b.ppm < subtractSafety(remoteChannel.my_fee_rate)) || []
 
-  // very recent rebalances list to rule out very recent peers
+  // no past rebalance info for this remote heavy peer
+  if (balancingData.length === 0) return -1
+
+  // list made of just very recent (time wise) rebalances list to rule out very recent repeats
+  // some results like timeout & no path between peers wont' show up in records
   const recentBalances = balancingData.filter(b => Date.now() - b.t < MIN_MINUTES_BETWEEN_SAME_PAIR * 1000 * 60)
 
-  if (balancingData.length === 0) return null
-
   // sort ppm from low to high
-  balancingData.sort((a, b) => a.ppm - b.ppm)
+  // balancingData.sort((a, b) => a.ppm - b.ppm)
 
   // go through historic events
   // and add potential candidates
-  for (const attempt of balancingData) {
+  for (const pastAttempt of balancingData) {
     // find full info peer info based on recorded public key
-    const candidatePublicKey = attempt.peer
-    const peer = peers.find(p => p.public_key === candidatePublicKey)
-    // no current peer found w/ this attemp's public key
+    const pastAttemptPeerPublicKey = pastAttempt.peer
+    // in case old data missing public key
+    if (!pastAttemptPeerPublicKey) continue
+    // match previously used peer pk to current peer options pk
+    const peer = peerOptions.find(p => p.public_key === pastAttemptPeerPublicKey)
+    // no current peer found w/ this past attempt's public key
     if (!peer) continue
-    // determine is this is a good local-heavy match
-    const goodMatch =
-      // has to be different peer from localChannel before
-      candidatePublicKey !== localChannel.public_key &&
-      // and unbalanced enough in remote direction to rebalance
-      peer.unbalancedSatsSigned > MAX_REBALANCE_SATS &&
-      // and this candidate can't be too recently used for this
-      !recentBalances.find(b => b.public_key === candidatePublicKey) &&
-      // and there can be no manual rules to block this as local-heavy peer
-      !getRuleFromSettings({ alias: peer.alias })?.no_local_rebalance
+    // check that it hasn't been this channels match in last MIN_MINUTES_BETWEEN_SAME_PAIR
+    const passesChecks = !recentBalances.find(b => b.public_key === pastAttemptPeerPublicKey)
 
-    if (goodMatch) {
-      localCandidates.push(peer)
-      uniquePeers[peer.alias] = uniquePeers[peer.alias] ? uniquePeers[peer.alias] + 1 : 1
+    if (passesChecks) {
+      // adds this peer public key to the current suitable candidates list
+      if (!uniquePeers[pastAttemptPeerPublicKey]) localCandidates.push(pastAttemptPeerPublicKey)
+      // notes this peer's attempts
+      if (uniquePeers[pastAttemptPeerPublicKey]) uniquePeers[pastAttemptPeerPublicKey].push(pastAttempt)
+      else uniquePeers[pastAttemptPeerPublicKey] = [pastAttempt]
     }
   }
+  if (localCandidates.length === 0) return -1
 
-  if (localCandidates.length === 0) return null
+  // sort by median ppm for that peer
+  localCandidates.sort(
+    (a, b) => median(uniquePeers[a].map(r => r.ppm)).o.median - median(uniquePeers[b].map(r => r.ppm)).o.median
+  )
 
-  console.log(`${getDate()} good peers found: ${JSON.stringify(uniquePeers)}`)
+  // temporary
+  // localCandidates.forEach(cpk => {
+  //   console.log(`${cpk} ${median(uniquePeers[cpk].map(r => r.ppm)).o.median} n:${uniquePeers[cpk].length}`)
+  // })
+
+  // * 3 will help return undefined
+  const winningCandidatePublicKey = localCandidates[trunc(random() * random() * localCandidates.length * 3)]
+  const winningOptionIndex = peerOptions.findIndex(p => p.public_key === winningCandidatePublicKey)
 
   // pick random peer, ones added at lower ppm or multiple times have more chance
-  return localCandidates[trunc(random() * random() * localCandidates.length)]
-  // return localCandidates[0] // try lowest fee candidate
+  return winningOptionIndex
 }
 
+// gets peers info including using previous slow to generate snapshot data
+// can use await generateSnapshots() instead to get fully updated stats for _all_ peers
 const runBotGetPeers = async ({ all = false } = {}) => {
   const getMyFees = await bos.getFees()
   const getPeers = all
@@ -369,8 +443,11 @@ const runBotGetPeers = async ({ all = false } = {}) => {
     // sort by local sats by default
     .sort((a, b) => b.outbound_liquidity - a.outbound_liquidity)
 
-  // add some slow to change stats from most recent snapshot if available
   addDetailsFromSnapshot(peers)
+  // add weight
+  peers.forEach(p => {
+    p.rndWeight = WEIGHT(p)
+  })
   return peers
 }
 
@@ -409,12 +486,12 @@ const runBotUpdatePeers = async oldPeers => {
 const acceptableFlowToLocal = p =>
   -p.unbalancedSatsSigned < (p.routed_in_msats / DAYS_FOR_STATS / 1000) * DAYS_FOR_FEE_REDUCTION &&
   daysAgo(p.routed_in_last_at) < DAYS_FOR_STATS / 2 &&
-  !isVeryRemoteHeavy(p) &&
+  !isVeryRemoteHeavy(p) && // not emergency where waiting is not an option
   !isNetOutflowing(p)
 const acceptableFlowToRemote = p =>
   p.unbalancedSatsSigned < (p.routed_out_msats / DAYS_FOR_STATS / 1000) * DAYS_FOR_FEE_REDUCTION &&
   daysAgo(p.routed_out_last_at) < DAYS_FOR_STATS / 2 &&
-  !isVeryLocalHeavy(p) &&
+  !isVeryLocalHeavy(p) && // not emergency where waiting is not an option
   !isNetInflowing(p)
 
 // allow these channels to be used as a remote heavy channel in a rebalance
@@ -446,85 +523,6 @@ const includeForLocalHeavyRebalance = p =>
   // insufficient existing flow to local side recently
   !acceptableFlowToRemote(p)
 
-// pick random remote heavy and random local heavy channel using weight setting
-const runBotPickRandomPeers = async () => {
-  console.boring(`${getDate()} runBotPickRandomPeers()`)
-
-  // get list of all peers and active peers to check if enough are online
-  const allPeers = await runBotGetPeers({ all: true })
-  const peers = await runBotGetPeers()
-
-  // check if too many peers are offline // testing
-  console.boring(`${getDate()} Online peers: ${peers.length} / ${allPeers.length}`)
-  if (1 - peers.length / allPeers.length > PEERS_OFFLINE_MAXIMUM) {
-    console.log(`${getDate()} too many peers offline.`)
-    await runBotConnectionCheck()
-    return await runBotPickRandomPeers()
-  }
-
-  // make a list of remote heavy and local heavy peers via balance check
-  const remoteHeavyPeers = peers.filter(includeForRemoteHeavyRebalance)
-  const localHeavyPeers = peers.filter(includeForLocalHeavyRebalance)
-
-  // nothing to pair up
-  if (remoteHeavyPeers.length === 0 || localHeavyPeers.length === 0) return {}
-
-  // Find random local-heavy and remote-heavy pair weighted by sats off-balance
-  const remoteSats = remoteHeavyPeers.reduce((sum, p) => WEIGHT(p) + sum, 0)
-  const localSats = localHeavyPeers.reduce((sum, p) => WEIGHT(p) + sum, 0)
-  let remoteRoll = random() * remoteSats
-  let localRoll = random() * localSats
-  let remoteIndex = 0
-  let localIndex = 0
-  while (remoteRoll > 0) remoteRoll -= WEIGHT(remoteHeavyPeers[remoteIndex++])
-  while (localRoll > 0) localRoll -= WEIGHT(localHeavyPeers[localIndex++])
-  const remoteChannel = remoteHeavyPeers[remoteIndex - 1]
-  const localChannel = localHeavyPeers[localIndex - 1]
-
-  // experimental printout
-  console.log(`${getDate()} Peer weight / balance / alias`)
-  if (VERBOSE) {
-    localHeavyPeers.sort((a, b) => WEIGHT(b) - WEIGHT(a))
-    for (const p of localHeavyPeers) {
-      const weight = WEIGHT(p)
-      const w = pretty(weight).padStart(13)
-      const b = p.balance.toFixed(2)
-      if (weight !== undefined) {
-        console.log(`Local-heavy: ${w}w ${b}b ${p.alias}`)
-      }
-    }
-    remoteHeavyPeers.sort((a, b) => WEIGHT(b) - WEIGHT(a))
-    for (const p of remoteHeavyPeers) {
-      const weight = WEIGHT(p)
-      const w = pretty(weight).padStart(12)
-      const b = p.balance.toFixed(2)
-      if (weight !== undefined) {
-        console.log(`Remote-heavy: ${w}w ${b}b ${p.alias}`)
-      }
-    }
-    /*
-    const notClassifiedPeers = p => !includeForLocalHeavyRebalance(p) && !includeForRemoteHeavyRebalance(p)
-    const ncPeers = allPeers.filter(notClassifiedPeers)
-    for (const p of ncPeers) {
-      const weight = WEIGHT(p)
-      const w = pretty(weight).padStart(12)
-      const b = p.balance.toFixed(2)
-      console.log(`Unclassified: ${w}w ${b}b ${p.alias}`)
-    }
-    */
-  }
-
-  console.log(`${getDate()}
-    Unbalanced pair matched randomly weighted by "${WEIGHT.toString()}":
-    ${localChannel?.alias} from ${localHeavyPeers.length} local-heavy peers,
-    ${remoteChannel?.alias} from ${remoteHeavyPeers.length} remote-heavy peers
-  `)
-  // ${VERBOSE ? JSON.stringify(remoteHeavyPeers.map(p => p.alias)) : ''}
-  // ${VERBOSE ? JSON.stringify(localHeavyPeers.map(p => p.alias)) : ''}
-
-  return { localChannel, remoteChannel }
-}
-
 // check settings for rules matching as substring of this alias
 const getRuleFromSettings = ({ alias }) => {
   // get rule
@@ -538,123 +536,39 @@ const getRuleFromSettings = ({ alias }) => {
   return rule
 }
 
-const runBotRebalancePeers = async ({ localChannel, remoteChannel }, isFirstRun = true) => {
-  const maxFeeRate = subtractSafety(remoteChannel.my_fee_rate)
-  const minUnbalanced = min(remoteChannel.unbalancedSats, localChannel.unbalancedSats)
-
-  // true means just regular bos rebalance
-  const doRebalanceInsteadOfKeysend = isFirstRun || !USE_KEYSENDS_AFTER_BALANCE
-
-  const maxAmount = doRebalanceInsteadOfKeysend
-    ? trunc(min(minUnbalanced, MAX_REBALANCE_SATS))
-    : trunc(min(minUnbalanced, MAX_REBALANCE_SATS_SEND))
-
-  // not enough imbalance to warrant rebalance
-  if (maxAmount < MIN_REBALANCE_SATS) {
-    console.log(
-      `${getDate()} Close enough to balanced: ${pretty(maxAmount)} sats off-balance is below ${pretty(
-        MIN_REBALANCE_SATS
-      )} sats setting`
-    )
-    return { failed: true }
-  }
-
-  const rebalanceTime = doRebalanceInsteadOfKeysend ? MINUTES_FOR_REBALANCE : MINUTES_FOR_SEND
-  const remoteRebalanceHistory = median(
-    readRecord(remoteChannel.public_key)
-      .rebalance.filter(r => !r.failed)
-      .map(r => r.ppm)
-  ).s
-
-  // prettier-ignore
-  console.log(`${getDate()} ${rebalanceTime} minutes limit
-
-    ☂️  me  ${localChannel.my_fee_rate} ppm  ---|-  ${localChannel.inbound_fee_rate} ppm "${localChannel.alias}" ${localChannel.public_key.slice(0, 10)}
-    ${(localChannel.outbound_liquidity / 1e6).toFixed(2)}M local sats --> (${(localChannel.inbound_liquidity / 1e6).toFixed(2)}M) --> ?
-
-    ☂️  me _${remoteChannel.my_fee_rate}_ppm_  -|---  ${remoteChannel.inbound_fee_rate} ppm "${remoteChannel.alias}" ${remoteChannel.public_key.slice(0, 10)}
-    (${(remoteChannel.outbound_liquidity / 1e6).toFixed(2)}M) <-- ${(remoteChannel.inbound_liquidity / 1e6).toFixed(2)}M remote sats <-- ?
-
-    Attempt to rebalance max of ${pretty(maxAmount)} sats at max fee rate of ${maxFeeRate} ppm
-    out of ${pretty(minUnbalanced)} sats left to balance for this pair
-    Previous rebalances for remote-heavy channel: ${remoteRebalanceHistory}
-  `)
-
-  // do the rebalance
-  // switch to keysends if that setting is on && not first run
-  const resBalance = doRebalanceInsteadOfKeysend
-    ? await bos.rebalance({
-        fromChannel: localChannel.public_key,
-        toChannel: remoteChannel.public_key,
-        maxSats: maxAmount,
-        maxMinutes: rebalanceTime,
-        maxFeeRate
-      })
-    : await bos.send({
-        destination: mynode.my_public_key,
-        fromChannel: localChannel.public_key,
-        toChannel: remoteChannel.public_key,
-        sats: maxAmount,
-        maxMinutes: rebalanceTime,
-        maxFeeRate
-      })
-
-  // display successful rebalance cost
-  if (!resBalance.failed) {
-    console.log(
-      `${getDate()} rebalanced ${pretty(resBalance.rebalanced)} sats at` +
-        ` ${resBalance.fee_rate} ppm! (attempted ${maxFeeRate} ppm) 😁😁😁😁😁`
-    )
-  }
-
-  // if rebalance worked, record it
-  if (!resBalance.failed) {
-    const workedRate = resBalance.fee_rate
-    // record rebalance cost
-    appendRecord({
-      peer: remoteChannel,
-      newRebalance: {
-        t: Date.now(),
-        ppm: workedRate,
-        failed: false,
-        peer: localChannel.public_key,
-        peerAlias: localChannel.alias,
-        sats: resBalance.rebalanced
-      }
-    })
-  }
-
-  // if rebalance possible but needs higher rate
-  if (resBalance.failed && resBalance.ppmSuggested) {
-    const attemptedFeeRate = maxFeeRate
-    const suggestedFeeRate = resBalance.ppmSuggested
-
-    console.log(
-      `${getDate()} Attempted rebalance at ${attemptedFeeRate} ppm failed` +
-        `, suggested ${suggestedFeeRate.toFixed(0)} ppm`
-    )
-
-    // record suggested rate on failed attempts
-    appendRecord({
-      peer: remoteChannel,
-      newRebalance: {
-        t: Date.now(),
-        ppm: suggestedFeeRate,
-        failed: true,
-        peer: localChannel.public_key,
-        peerAlias: localChannel.alias,
-        sats: maxAmount
-      }
-    })
-  }
-
-  return resBalance
-}
-
 // reconnection timer handling
 const runBotReconnectCheck = async () => {
   const now = Date.now()
   const timers = JSON.parse(fs.readFileSync(TIMERS_PATH))
+
+  // check if earlier reconnect is necessary
+
+  // get list of all peers and active peers to check if enough are online
+  const allPeers = await runBotGetPeers({ all: true })
+  const peers = await runBotGetPeers()
+
+  // check if too many peers are offline
+  console.boring(`${getDate()} Online peers: ${peers.length} / ${allPeers.length}`)
+
+  if (1 - peers.length / allPeers.length > PEERS_OFFLINE_MAXIMUM) {
+    // emergency reconnect - running reconnect early!
+    console.log(`${getDate()} too many peers offline. Running early reconnect.`)
+    await runBotConnectionCheck()
+    // update timer
+    fs.writeFileSync(
+      TIMERS_PATH,
+      JSON.stringify({
+        ...timers,
+        lastReconnect: now
+      })
+    )
+
+    console.log(`${getDate()} Updated ${TIMERS_PATH}`)
+
+    return null
+  }
+
+  // otherwise check for scheduled one
   const lastReconnect = timers.lastReconnect || 0
   const timeSince = now - lastReconnect
   const isTimeForReconnect = timeSince > 1000 * 60 * MINUTES_BETWEEN_RECONNECTS
@@ -662,8 +576,8 @@ const runBotReconnectCheck = async () => {
   console.log(
     `${getDate()} ${
       isTimeForReconnect ? 'Time to run' : 'Skipping'
-    } bos reconnect. (${MINUTES_BETWEEN_RECONNECTS} minutes timer)` +
-      ` Last run: ${lastReconnect === 0 ? 'never' : `${minutesSince}m ago at ${getDate(lastReconnect)}`}`
+    } BoS reconnect. (${MINUTES_BETWEEN_RECONNECTS} minutes timer)` +
+      ` Last run: ${lastReconnect === 0 ? 'never' : `${minutesSince} minutes ago at ${getDate(lastReconnect)}`}`
   )
   if (isTimeForReconnect) {
     // check for internet / tor issues
@@ -693,8 +607,8 @@ const runUpdateFeesCheck = async () => {
   console.log(
     `${getDate()} ${
       isTimeForFeeUpdate ? 'Time to run' : 'Skipping'
-    } fee/channel updates. (${MINUTES_BETWEEN_FEE_CHANGES}m timer)` +
-      ` Last run: ${lastFeeUpdate === 0 ? 'never' : `${minutesSince}m ago at ${getDate(lastFeeUpdate)}`}`
+    } fee/channel updates. (${MINUTES_BETWEEN_FEE_CHANGES} minutes timer)` +
+      ` Last run: ${lastFeeUpdate === 0 ? 'never' : `${minutesSince} minutes ago at ${getDate(lastFeeUpdate)}`}`
   )
   if (isTimeForFeeUpdate) {
     // update fees
@@ -748,7 +662,7 @@ const updateFees = async () => {
     if (rule?.max_ppm !== undefined && ppmOld > rule.max_ppm) ruleFix = rule.max_ppm
     // apply rule change if any found
     if (ruleFix >= 0) {
-      console.log(`${getDate()} ${peer.alias} : rule required change ${ppmOld} -> ${ruleFix} ppm`)
+      console.log(`${getDate()} ${ca(peer.alias)} : rule required change ${ppmOld} -> ${ruleFix} ppm`)
       const resSetFee = await bos.setFees(peer.public_key, ruleFix)
       appendRecord({
         peer,
@@ -777,9 +691,9 @@ const updateFees = async () => {
       return trunc(ppmIn)
     }
 
-    const isIncreasing = ADJUST_FEES && flowOutRecentDaysAgo < DAYS_FOR_FEE_INCREASE
+    let isIncreasing = ADJUST_FEES && flowOutRecentDaysAgo < DAYS_FOR_FEE_INCREASE
 
-    const isDecreasing =
+    let isDecreasing =
       ADJUST_FEES &&
       !isIncreasing &&
       flowOutRecentDaysAgo > DAYS_FOR_FEE_REDUCTION &&
@@ -787,58 +701,67 @@ const updateFees = async () => {
       !isVeryRemoteHeavy(peer)
 
     const flowString = `${isNetOutflowing(peer) ? 'outflowing' : isNetInflowing(peer) ? ' inflowing' : '   no flow'}`
+    const flowOutDaysString =
+    flowOutRecentDaysAgo > DAYS_FOR_STATS
+      ? `${DAYS_FOR_STATS}+`.padStart(5)
+      : flowOutRecentDaysAgo.toFixed(1).padStart(5)
+
     feeChangeSummary += '\n'
 
     let ppmNew = ppmOld
 
+    if (isIncreasing) ppmNew = applyRules(ppmOld * (1 + NUDGE_UP)) + 1
+    else if (isDecreasing) ppmNew = applyRules(ppmOld * (1 - NUDGE_DOWN))
+    // double check with rules
+    if (ppmNew === ppmOld) [isIncreasing, isDecreasing] = [false, false]
+
     if (isIncreasing) {
       nIncreased++
-      // at least +1
-      ppmNew = applyRules(ppmOld * (1 + NUDGE_UP)) + 1
 
       // prettier-ignore
-      const feeIncreaseLine = `${getDate()} ${peer.alias.padEnd(30)} ${ppmOld.toFixed(0).padStart(5)} -> ${ppmNew.toFixed(0).padEnd(6)} ppm (-> ${(ppmNew + ')').padEnd(5)} 🔼🔼🔼 ${flowString.padStart(15)} ${flowOutRecentDaysAgo.toFixed(1).padStart(5)}d ${peer.balance.toFixed(1)}b`
+      const feeIncreaseLine = `${getDate()} ${ca(peer.alias).padEnd(30)} ${ppmOld.toFixed(0).padStart(5)} -> ${ppmNew.toFixed(0).padEnd(6)} ppm (-> ${(ppmNew + ')').padEnd(5)} ${flowString.padStart(15)} ${flowOutDaysString} days  ${peer.balance.toFixed(1)}b  ↗`
       feeChangeSummary += feeIncreaseLine
       console.log(feeIncreaseLine)
 
       ppmNew = await bos.setFees(peer.public_key, ppmNew)
     } else if (isDecreasing) {
       nDecreased++
-      // at least -1 (b/c of trunc)
-      ppmNew = applyRules(ppmOld * (1 - NUDGE_DOWN))
 
       // prettier-ignore
-      const feeDecreaseLine = `${getDate()} ${peer.alias.padEnd(30)} ${ppmOld.toFixed(0).padStart(5)} -> ${ppmNew.toFixed(0).padEnd(6)} ppm (-> ${(ppmNew + ')').padEnd(5)} 🔻🔻🔻 ${flowString.padStart(15)} ${flowOutRecentDaysAgo.toFixed(1).padStart(5)}d  ${peer.balance.toFixed(1)}b`
+      const feeDecreaseLine = `${getDate()} ${ca(peer.alias).padEnd(30)} ${ppmOld.toFixed(0).padStart(5)} -> ${ppmNew.toFixed(0).padEnd(6)} ppm (-> ${(ppmNew + ')').padEnd(5)} ${flowString.padStart(15)} ${flowOutDaysString} days  ${peer.balance.toFixed(1)}b  ↘`
       feeChangeSummary += feeDecreaseLine
       console.log(feeDecreaseLine)
 
       ppmNew = await bos.setFees(peer.public_key, ppmNew)
     } else {
       // for no changes
+      const warnings = isVeryRemoteHeavy(peer) ? '⛔-VRH' : '↔'
       // prettier-ignore
-      const feeNoChangeLine = `${getDate()} ${peer.alias.padEnd(30)} ${ppmOld.toFixed(0).padStart(5)} -> no changes (-> ${(ppmOld + ')').padEnd(5)}     ${flowString.padStart(18)} ${flowOutRecentDaysAgo.toFixed(1).padStart(5)}d  ${peer.balance.toFixed(1)}b`
+      const feeNoChangeLine = `${getDate()} ${ca(peer.alias).padEnd(30)} ${ppmOld.toFixed(0).padStart(5)} -> same   ppm (-> ${(ppmOld + ')').padEnd(5)} ${flowString.padStart(15)} ${flowOutDaysString} days  ${peer.balance.toFixed(1)}b  ${warnings}`
       feeChangeSummary += feeNoChangeLine
       console.log(feeNoChangeLine)
     }
 
-    // update record
-    appendRecord({
-      peer,
-      newRecordData: {
-        ppmTargets: { ppmNew, daysNoRouting: flowOutRecentDaysAgo },
-        feeChanges: [
-          {
-            t: now,
-            ppm: ppmNew,
-            // for ppm vs Fout data
-            ppm_old: ppmOld,
-            routed_out_msats: peer.routed_out_msats,
-            daysNoRouting: flowOutRecentDaysAgo
-          },
-          ...(logFileData?.feeChanges || [])
-        ]
-      }
-    })
+    // update record if last recorded fee rate isn't what is last in last records
+    if ((logFileData?.feeChanges || [])[0] !== ppmOld) {
+      appendRecord({
+        peer,
+        newRecordData: {
+          ppmTargets: { ppmNew, daysNoRouting: flowOutRecentDaysAgo },
+          feeChanges: [
+            {
+              t: now,
+              ppm: ppmNew,
+              // for ppm vs Fout data
+              ppm_old: ppmOld,
+              routed_out_msats: peer.routed_out_msats,
+              daysNoRouting: flowOutRecentDaysAgo
+            },
+            ...(logFileData?.feeChanges || [])
+          ]
+        }
+      })
+    }
   }
 
   feeChangeSummary += '\n'
@@ -888,28 +811,18 @@ const appendRecord = ({ peer, newRecordData = {}, newRebalance = {} }, log = fal
   // remove old data in future or weight higher recent data
 
   // update just this peers file
-  fs.writeFileSync(
-    fullPath,
-    JSON.stringify(
-      {
-        ...oldRecord,
-        ...newRecordData,
-        alias: peer.alias,
-        public_key: peer.public_key,
-        ppmAll,
-        ppmWorked,
-        rebalance: combinedRebalanceData
-      },
-      fixJSON,
-      2
-    )
-  )
+  const newFileData = {
+    ...oldRecord,
+    ...newRecordData,
+    alias: peer.alias,
+    public_key: peer.public_key,
+    ppmAll,
+    ppmWorked,
+    rebalance: combinedRebalanceData
+  }
+  fs.writeFileSync(fullPath, JSON.stringify(newFileData, fixJSON, 2))
 
-  log &&
-    console.log(`${getDate()} ${fullPath} "${peer.alias}" updated, ${combinedRebalanceData.length} records,
-       all:   ${JSON.stringify(ppmAll)}
-    worked:   ${JSON.stringify(ppmWorked)}
-  `)
+  log && console.log(`${getDate()} ${fullPath} "${peer.alias}" updated, ${combinedRebalanceData.length} records`)
 }
 
 const readRecord = publicKey => {
@@ -968,16 +881,6 @@ const generateSnapshots = async () => {
   peers.forEach(p => {
     publicKeyToAlias[p.public_key] = p.alias
   })
-
-  // forwards lookback (this function didn't return enough info)
-  // const getForwards = await bos.forwards({ days: DAYS_FOR_STATS })
-  // const forwards = getForwards.reduce((final, peer) => {
-  //   // convert ISO string to timestamp
-  //   peer.routed_in_last_at = Date.parse(peer.routed_in_last_at) || 0
-  //   peer.routed_out_last_at = Date.parse(peer.routed_out_last_at) || 0
-  //   final[peer.public_key] = peer
-  //   return final
-  // }, {})
 
   // specific routing events
 
@@ -1220,20 +1123,7 @@ const generateSnapshots = async () => {
         remote_max_pending_mtokens: +channelOnChainInfo[id].remote_max_pending_mtokens,
         remote_min_htlc_mtokens: +channelOnChainInfo[id].remote_min_htlc_mtokens
       })
-      // if (channelOnChainInfo[id].local_max_pending_mtokens !== channelOnChainInfo[id].remote_max_pending_mtokens) {
-      //   console.log(`
-      //     Mismatch for alias: "${peer.alias}" peer:${peer.public_key} id:${id}
-      //     local_max_pending_mtokens: ${pretty(channelOnChainInfo[id].local_max_pending_mtokens)}
-      //     remote_max_pending_mtokens: ${pretty(channelOnChainInfo[id].remote_max_pending_mtokens)}
-      //   `)
-      // }
-      // if (channelOnChainInfo[id].local_min_htlc_mtokens !== channelOnChainInfo[id].remote_min_htlc_mtokens) {
-      //   console.log(`
-      //     Mismatch for alias: "${peer.alias}" peer:${peer.public_key} id:${id}
-      //     local_min_htlc_mtokens: ${pretty(channelOnChainInfo[id].local_min_htlc_mtokens)}
-      //     remote_min_htlc_mtokens: ${pretty(channelOnChainInfo[id].remote_min_htlc_mtokens)}
-      //   `)
-      // }
+
       return final
     }, [])
   })
@@ -1273,37 +1163,10 @@ const generateSnapshots = async () => {
     peers.filter(p => p.routed_out_last_at).map(p => p.routed_out_fees_msats / 1000),
     { f: pretty }
   ).s
-  // const totalEarnedFromForwards = getForwards.reduce(
-  //   (sum, peer) => sum + (peer.earned_outbound_fees || 0),
-  //   0
-  // )
-  // const statsEarnedPerPeer = median(
-  //   getForwards
-  //     .filter(peer => peer.routed_out_last_at)
-  //     .map(peer => peer.earned_outbound_fees || 0),
-  //   { f: pretty }
-  // )
 
   const totalPeersRoutingIn = peers.filter(p => p.routed_in_last_at).length
   const totalPeersRoutingOut = peers.filter(p => p.routed_out_last_at).length
 
-  // const totalPeersRoutingIn = getForwards.filter(
-  //   peer => peer.routed_in_last_at
-  // ).length
-
-  // const totalPeersRoutingOut = getForwards.filter(
-  //   peer => peer.routed_out_last_at
-  // ).length
-
-  // const earnedSummary = await bos.getFeesChart({ days: DAYS_FOR_STATS })
-  // const countsSummary = await bos.getFeesChart({
-  //   days: DAYS_FOR_STATS,
-  //   is_count: true
-  // })
-  // const tokensSummary = await bos.getFeesChart({
-  //   days: DAYS_FOR_STATS,
-  //   is_forwarded: true
-  // })
   const chainFeesSummary = await bos.getChainFeesChart({ days: DAYS_FOR_STATS })
   // const paidFeesSummary = await bos.getFeesPaid({ days: DAYS_FOR_STATS })
 
@@ -1339,18 +1202,21 @@ const generateSnapshots = async () => {
   const totalForwardsCount = forwardsAll.length
   const totalRouted = forwardsAll.reduce((t, f) => t + f.mtokens / 1000, 0)
 
-  // const totalForwardsCount = countsSummary.data.reduce((t, v) => t + v, 0)
-  // const totalRouted = tokensSummary.data.reduce((t, v) => t + v, 0)
-  // const totalFeesPaid = paidFeesSummary.data.reduce((t, v) => t + v, 0)
-
   const totalChainFees = chainFeesSummary.data.reduce((t, v) => t + v, 0)
 
   const totalFeesPaid = totalRebalancedFees
 
   const totalProfit = totalEarnedFromForwards - totalChainFees - totalFeesPaid
 
+  peers.forEach(p => {
+    // add this experimental flow rate calc (temp)
+    calculateFlowRateMargin(p)
+    // calculate weight for each peer
+    p.rndWeight = WEIGHT(p)
+  })
+
   // prettier-ignore
-  const summary = `${getDate()}
+  const nodeSummary = `${getDate()}
 
   NODE SUMMARY:
 
@@ -1427,16 +1293,19 @@ const generateSnapshots = async () => {
     : ''
 }
   `
-  console.log(summary)
+  console.log(nodeSummary)
 
   // by channel flow rate summary
+
   // sort by most to least flow total, normalized by capacity
   // higher rating uses capacity better and recommended for size up
   // lower rating uses capacity worse or not at all and recommended for changes
-  // const score = p => (p.routed_out_msats + p.routed_in_msats) / p.capacity
-  const score = p => ((p.routed_out_fees_msats + p.routed_in_fees_msats) / p.capacity) * 1e6
+  // const score = p => (p.routed_out_msats + p.routed_in_msats) / p.capacity // uses available capacity best
+  // const score = p => ((p.routed_out_fees_msats + p.routed_in_fees_msats) / p.capacity) * 1e6 // best returns for available capacity
+  const score = p => p.routed_out_fees_msats + p.routed_in_fees_msats // best returns overall
   peers.sort((a, b) => score(b) - score(a))
-  let flowRateSummary = `${getDate()} - over ${DAYS_FOR_STATS} days\n\n    `
+
+  let flowRateSummary = `${getDate()} - over ${DAYS_FOR_STATS} days, sorted in desc. order by score = ${score}\n\n    `
   for (const [i, p] of peers.entries()) {
     const local = ((p.outbound_liquidity / 1e6).toFixed(1) + 'M').padStart(5, '-')
     const remote = ((p.inbound_liquidity / 1e6).toFixed(1) + 'M').padEnd(5, '-')
@@ -1461,23 +1330,23 @@ const generateSnapshots = async () => {
     const lastPpmChangeMinutes = lastPpmChange && ((Date.now() - (lastPpmChange.t || 0)) / (1000 * 60)).toFixed(0)
     const lastPpmChangeString =
       lastPpmChange && lastPpmChange.ppm_old
-        ? `${lastPpmChange.ppm_old}->${lastPpmChange.ppm}ppm @ ${lastPpmChangeMinutes} minutes ago`
+        ? `last ∆ppm: ${lastPpmChange.ppm_old}->${lastPpmChange.ppm}ppm @ ${lastPpmChangeMinutes} minutes ago`
         : ''
 
     const lastRoutedIn = (Date.now() - p.routed_in_last_at) / (1000 * 60 * 60 * 24)
     const lastRoutedInString =
       lastRoutedIn > DAYS_FOR_STATS
-        ? `routed-in: more than ${DAYS_FOR_STATS} days ago`.padStart(23)
+        ? `routed-in: ${DAYS_FOR_STATS}+ days ago`.padStart(23)
         : `routed-in: ${lastRoutedIn.toFixed(1)} days ago`.padStart(23)
     const lastRoutedOut = (Date.now() - p.routed_out_last_at) / (1000 * 60 * 60 * 24)
     const lastRoutedOutString =
       lastRoutedOut > DAYS_FOR_STATS
-        ? `routed-out: more than ${DAYS_FOR_STATS} days ago`
+        ? `routed-out: ${DAYS_FOR_STATS}+ days ago`
         : `routed-out: ${lastRoutedOut.toFixed(1)} days ago`
 
     const issues = []
 
-    if (p.rebalanced_out_msats > 0 && p.rebalanced_in_msats > 0) issues.push('2WR')
+    if (p.rebalanced_out_msats > 0 && p.rebalanced_in_msats > 0) issues.push('2-WAY-REBALANCE')
     // warning if fee is lower than needed for rebalancing on remote heavy channel with no flow in
     if (
       p.outbound_liquidity < 1e6 &&
@@ -1492,8 +1361,8 @@ const generateSnapshots = async () => {
     const issuesString = issues.length > 0 ? '🚨 ' + issues.join(', ') : ''
 
     // prettier-ignore
-    flowRateSummary += `${('#' + (i + 1)).padStart(4)} ${score(p).toFixed(0)}
-      ${' '.repeat(15)}me  ${(p.my_fee_rate + 'ppm').padStart(7)} [-${local}--|--${remote}-] ${(p.inbound_fee_rate + 'ppm').padEnd(7)} ${p.alias} (./peers/${p.public_key.slice(0, 10)}.json) ${p.balance.toFixed(2)}b ${p.flowMarginWeight}w ${p.flowMarginWeight > 0 ? '<--R_in!' : ''}${p.flowMarginWeight < 0 ? 'R_out!-->' : ''} ${issuesString}
+    flowRateSummary += `${('#' + (i + 1)).padStart(4)} ${pretty(score(p))}
+      ${' '.repeat(15)}me  ${(p.my_fee_rate + 'ppm').padStart(7)} [-${local}--|--${remote}-] ${(p.inbound_fee_rate + 'ppm').padEnd(7)} ${p.alias} (./peers/${p.public_key.slice(0, 10)}.json) ${p.balance.toFixed(2)}b ${p.flowMarginWithRules}w ${p.flowMarginWithRules > 0 ? '<--R_in!' : ''}${p.flowMarginWithRules < 0 ? 'R_out!-->' : ''} ${issuesString}
       \x1b[2m${routeIn.padStart(26)} <---- routing ----> ${routeOut.padEnd(23)} +${routeOutEarned.padEnd(17)} ${routeInPpm.padStart(5)}|${routeOutPpm.padEnd(10)} ${('#' + p.routed_in_count).padStart(5)}|#${p.routed_out_count.toString().padEnd(5)}\x1b[0m
       \x1b[2m${rebIn.padStart(26)} <-- rebalancing --> ${rebOut.padEnd(23)} -${rebOutFees.padEnd(17)} ${rebInPpm.padStart(5)}|${rebOutPpm.padEnd(10)} ${('#' + p.rebalanced_in_count).padStart(5)}|#${p.rebalanced_out_count.toString().padEnd(5)}\x1b[0m
       \x1b[2m${' '.repeat(17)}Rebalances-in (<--) used (ppm): ${rebalanceHistory.s}\x1b[0m
@@ -1533,8 +1402,8 @@ const generateSnapshots = async () => {
   fs.writeFileSync(`${LOG_FILES}/${getDay()}_flowSummary.txt`, flowRateSummary.replace(stylingPatterns, ''))
   fs.writeFileSync('_flowSummary.txt', flowRateSummary.replace(stylingPatterns, ''))
   // node summary
-  fs.writeFileSync(`${LOG_FILES}/${getDay()}_nodeSummary.txt`, summary)
-  fs.writeFileSync('_nodeSummary.txt', summary)
+  fs.writeFileSync(`${LOG_FILES}/${getDay()}_nodeSummary.txt`, nodeSummary)
+  fs.writeFileSync('_nodeSummary.txt', nodeSummary)
 
   // too much data to write constantly
   // fs.writeFileSync(
@@ -1548,17 +1417,17 @@ const generateSnapshots = async () => {
   //   JSON.stringify(rebalances, fixJSON, 2)
   // )
 
-  const message = `🌷 Stats: ${DAYS_FOR_STATS} days:
-earned: ${pretty(totalEarnedFromForwards)} sats
-spent: ${pretty(totalFeesPaid + totalChainFees)} sats
-net: ${pretty(totalProfit)} sats
-routed: ${
+  const message = `🌷 Statistics for ${DAYS_FOR_STATS} days:
+earned: ${pretty(totalEarnedFromForwards)}
+spent: ${pretty(totalFeesPaid + totalChainFees)}
+net: ${pretty(totalProfit)}
+routing rewards: ${
     median(
       forwardsAll.map(f => f.fee_mtokens / 1000.0),
-      { f: pretty, pr: 1 }
+      { pr: 1 }
     ).s
   }
-  `
+`
   const { token, chat_id } = mynode.settings?.telegram || {}
   if (token && chat_id) bos.sayWithTelegramBot({ token, chat_id, message })
 
@@ -1593,7 +1462,7 @@ const calculateFlowRateMargin = p => {
   const MIN_F = MIN_FLOWRATE_PER_DAY
 
   p.flowMargin = trunc((fOut / DAYS_FOR_STATS + MIN_F) * (1 - B) - (fIn / DAYS_FOR_STATS + MIN_F) * B)
-  p.flowMarginWeight = isLocalHeavy(p) // B >> 0.5 local
+  p.flowMarginWithRules = isLocalHeavy(p) // B >> 0.5 local
     ? min(p.flowMargin, -1) // maybe R_out
     : isRemoteHeavy(p) // B << 0.5 remote
     ? max(p.flowMargin, 1) // maybe R_in
@@ -1641,7 +1510,7 @@ const runBotConnectionCheck = async ({ quiet = false } = {}) => {
   // run bos reconnect
   if (ALLOW_BOS_RECONNECT) await bos.reconnect(true)
 
-  await sleep(2 * 60 * 1000)
+  await sleep(1 * 60 * 1000)
 
   const peers = await runBotGetPeers({ all: true })
 
@@ -1651,10 +1520,10 @@ const runBotConnectionCheck = async ({ quiet = false } = {}) => {
 
   const peersTotal = peers.length
   const message =
-    `🍳 There are ${peersOffline.length} / ${peersTotal}` +
-    ` peers offline, ${((peersOffline.length / peersTotal) * 100).toFixed(0)}%` +
-    ` (bos reconnect every ${MINUTES_BETWEEN_RECONNECTS} minutes).` +
-    ` Offline: ${peersOffline.map(p => p.alias).join(', ') || 'n/a'}`
+    `🔍 Offline Statistics:
+ ${peersOffline.length} / ${peersTotal} peers offline (${((peersOffline.length / peersTotal) * 100).toFixed(0)}%)
+ (BoS reconnect every ${MINUTES_BETWEEN_RECONNECTS} minutes).
+ Offline: ${peersOffline.map(p => p.alias).join(', ') || 'n/a'}`
 
   // update user about offline peers just in case
   console.log(`${getDate()} ${message}`)
@@ -1682,19 +1551,18 @@ const runBotConnectionCheck = async ({ quiet = false } = {}) => {
   // give it a lot of time
   await sleep(10 * 60 * 1000)
 
-  if (!fs.existsSync(RESET_ACTION_PATH)) {
-    console.log(`${getDate()} tor reset failed, no action file found`)
+  if (!fs.existsSync(RESET_REQUEST_PATH)) {
+    console.log(`${getDate()} tor reset failed, request file still there. resetHandler not running?`)
     process.exit(1)
   }
   const res = JSON.parse(fs.readFileSync(RESET_ACTION_PATH))
   if (res.id !== requestTime) {
-    console.log(`${getDate()} tor reset failed, no updated action file found, just old version`)
+    console.log(`${getDate()} tor reset failed, request read but no updated action file found`)
     process.exit(1)
   }
 
-  // temporary measure
-  console.log(`${getDate()} tor seems to been reset but stopping bot script anyway`)
-  process.exit(0)
+  console.log(`${getDate()} tor seems to been reset, rechecking everything again`)
+  // process.exit(0)
 
   // recheck offline peers again
   return runBotConnectionCheck()
@@ -1717,7 +1585,7 @@ const initialize = async () => {
   // const maxDownFeeChangePerDay = [...Array(feeUpdatesPerDay)].reduce(f => updateNudge(f, NUDGE_DOWN, 100), 0)
 
   const maxUpFeeChangePerDay = ((1 + NUDGE_UP) ** feeUpdatesPerDay - 1) * 100
-  const maxDownFeeChangePerDay = (1 - NUDGE_DOWN) ** feeUpdatesPerDay * 100
+  const maxDownFeeChangePerDay = (1 - (1 - NUDGE_DOWN) ** feeUpdatesPerDay) * 100
 
   console.log(`${getDate()}
   ========================================================
@@ -1728,10 +1596,10 @@ const initialize = async () => {
 
     max fee rate change per day is
 
-      up:   ${maxUpFeeChangePerDay.toFixed(1)} % towards set point
+      up:   ${maxUpFeeChangePerDay.toFixed(1)} %
         (if routed-out last ${DAYS_FOR_FEE_INCREASE} days)
 
-      down: ${maxDownFeeChangePerDay.toFixed(1)} % towards set point
+      down: ${maxDownFeeChangePerDay.toFixed(1)} %
         (if no routing-out for ${DAYS_FOR_FEE_REDUCTION} days)
 
 
@@ -1779,9 +1647,8 @@ const initialize = async () => {
 // const subtractSafety = ppm => trunc(max(min(ppm - SAFETY_MARGIN_FLAT, ppm / SAFETY_MARGIN), 0))
 // const addSafety = ppm => trunc(max(ppm + SAFETY_MARGIN_FLAT, ppm * SAFETY_MARGIN))
 
-const addSafety = ppm => trunc(min(ppm * SAFETY_MARGIN + MIN_FEE_RATE_FOR_REBALANCE, ppm + SAFETY_MARGIN_FLAT))
-const subtractSafety = ppm =>
-  trunc(max((ppm - MIN_FEE_RATE_FOR_REBALANCE) / SAFETY_MARGIN, ppm - SAFETY_MARGIN_FLAT, 0))
+const addSafety = ppm => trunc(min(ppm * SAFETY_MARGIN + 1, ppm + SAFETY_MARGIN_FLAT))
+const subtractSafety = ppm => trunc(max((ppm - 1) / SAFETY_MARGIN, ppm - SAFETY_MARGIN_FLAT, 0))
 
 //const isRemoteHeavy = p => p.unbalancedSatsSigned < -MIN_SATS_OFF_BALANCE
 const isRemoteHeavy = p => getRuleFromSettings({ alias: p.alias })?.no_local_rebalance ? true : (p.balance < 0.4)
@@ -1794,9 +1661,11 @@ const isNetOutflowing = p => p.routed_out_msats - p.routed_in_msats > 0
 const isNetInflowing = p => p.routed_out_msats - p.routed_in_msats < 0
 
 // very remote heavy = very few sats on local side, the less the remote-heavier
-const isVeryRemoteHeavy = p => p.outbound_liquidity < MIN_SATS_PER_SIDE
+//const isVeryRemoteHeavy = p => p.outbound_liquidity < MIN_SATS_PER_SIDE
+const isVeryRemoteHeavy = p => getRuleFromSettings({ alias: p.alias })?.no_local_rebalance ? true : (p.balance <= 0.1)
 // very local heavy = very few sats on remote side, the less the local-heavier
-const isVeryLocalHeavy = p => p.inbound_liquidity < MIN_SATS_PER_SIDE
+//const isVeryLocalHeavy = p => p.inbound_liquidity < MIN_SATS_PER_SIDE
+const isVeryLocalHeavy = p => getRuleFromSettings({ alias: p.alias })?.no_remote_rebalance ? true : (p.balance >= 0.9) 
 
 const daysAgo = ts => (Date.now() - ts) / (1000 * 60 * 60 * 24)
 
@@ -1812,11 +1681,14 @@ const isNotEmpty = obj => !isEmpty(obj)
 
 console.boring = args => console.log(`\x1b[2m${args}\x1b[0m`)
 
-const sleep = async (ms, log = true) => {
+const sleep = async (ms, { msg = '', quiet = false } = {}) => {
+  if (quiet) return await new Promise(resolve => setTimeout(resolve, trunc(ms)))
+
   const seconds = ms / 1000
   const minutes = seconds / 60
   const t = minutes >= 1 ? minutes.toFixed(1) + ' minutes' : seconds.toFixed(1) + ' seconds'
-  if(log) console.log(`${getDate()}\n\n    Paused for ${t}, ctrl + c to exit\n`)
+  if (msg) msg = '\n  ' + msg
+  console.log(`${getDate()}\n${msg}\n    Paused for ${t}, ctrl + c to exit\n`)
 
   // easy script stop
   if (fs.existsSync('PLEASESTOP.json')) {
@@ -1827,9 +1699,10 @@ const sleep = async (ms, log = true) => {
 
   return await new Promise(resolve => setTimeout(resolve, trunc(ms)))
 }
-const stylingPatterns =
-  // eslint-disable-next-line no-control-regex
-  /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g
+const stylingPatterns = /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g
+
+// clean alias from emoji & non standard characters
+const ca = alias => alias.replace(/[^\x00-\x7F]/g, '').trim() // .replace(/[\u{0080}-\u{10FFFF}]/gu,'');
 
 // returns mean, truncated fractions
 const median = (numbers = [], { f = v => v, pr = 0 } = {}) => {
@@ -1851,13 +1724,13 @@ const median = (numbers = [], { f = v => v, pr = 0 } = {}) => {
   const result = {
     n,
     avg: f(tr(sorted.reduce((sum, val) => sum + val, 0) / sorted.length)),
-    bottom: f(sorted[0]),
+    bottom: f(tr(sorted[0])),
     bottom25: f(
       sorted.length % 4 === 0 ? tr((sorted[middleBottom - 1] + sorted[middleBottom]) / 2.0) : tr(sorted[middleBottom])
     ),
     median: f(sorted.length % 2 === 0 ? tr((sorted[middle - 1] + sorted[middle]) / 2.0) : tr(sorted[middle])),
     top75: f(sorted.length % 4 === 0 ? tr((sorted[middleTop - 1] + sorted[middleTop]) / 2.0) : tr(sorted[middleTop])),
-    top: f(sorted[numbers.length - 1])
+    top: f(tr(sorted[numbers.length - 1]))
   }
 
   const { bottom, bottom25, median, avg, top75, top } = result
@@ -1868,6 +1741,17 @@ const median = (numbers = [], { f = v => v, pr = 0 } = {}) => {
 
   // return !obj ? stringOutput : result
   return { s: stringOutput, o: result }
+}
+
+// returns sorted array using weighted randomness function for order
+const rndWeightedSort = (arr, w = () => 1) => {
+  // shallow copy
+  const newArr = arr.slice()
+  // use rnd with weight to get weighted randomness
+  for (const p of newArr) p.rndWeightUsed = w(p) * random()
+  // sort array using that activated weight
+  newArr.sort((a, b) => b.rndWeightUsed - a.rndWeightUsed)
+  return newArr
 }
 
 initialize()
