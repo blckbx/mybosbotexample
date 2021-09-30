@@ -1417,7 +1417,7 @@ const generateSnapshots = async () => {
   //   JSON.stringify(rebalances, fixJSON, 2)
   // )
 
-  const message = `🌷 Statistics for ${DAYS_FOR_STATS} days:
+  const message = `🌱 Statistics for ${DAYS_FOR_STATS} days:
 earned: ${pretty(totalEarnedFromForwards)}
 spent: ${pretty(totalFeesPaid + totalChainFees)}
 net: ${pretty(totalProfit)}
@@ -1520,7 +1520,7 @@ const runBotConnectionCheck = async ({ quiet = false } = {}) => {
 
   const peersTotal = peers.length
   const message =
-    `🔍 Offline Statistics:
+    `🔌 Offline Statistics:
  ${peersOffline.length} / ${peersTotal} peers offline (${((peersOffline.length / peersTotal) * 100).toFixed(0)}%)
  (BoS reconnect every ${MINUTES_BETWEEN_RECONNECTS} minutes).
  Offline: ${peersOffline.map(p => p.alias).join(', ') || 'n/a'}`
