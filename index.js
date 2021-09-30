@@ -462,6 +462,7 @@ const doBonusPeerCalcs = p => {
   p.unbalancedSats = abs(p.unbalancedSatsSigned)
 }
 
+/*
 // update each peer in array of oldPeers in-place
 const runBotUpdatePeers = async oldPeers => {
   const newPeers = await runBotGetPeers()
@@ -479,6 +480,7 @@ const runBotUpdatePeers = async oldPeers => {
     }
   }
 }
+*/
 
 // how many sats I need for balance vs how much I'll probably get in _ days
 // + check info is reliable via more than 1 recent sample or 1 very recent sample
