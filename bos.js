@@ -1,5 +1,6 @@
 /*
   Wrapper for balanceofsatoshis installed globally
+  Needs node v14+, node -v
   Installed with `npm i -g balanceofsatoshis@10.18.1`
   Linked via `npm link balanceofsatoshis`
 */
@@ -28,7 +29,7 @@ import {
   getForwards as bosGetForwards
 } from 'balanceofsatoshis/network/index.js'
 
-const { trunc } = Math
+const { trunc, min } = Math
 
 // use existing global bos authentication
 const mylnd = async () => (await lnd.authenticatedLnd({})).lnd
@@ -143,7 +144,7 @@ const reconnect = async (log = false) => {
 }
 
 const rebalance = async (
-  { fromChannel, toChannel, maxSats = 1, maxMinutes = 3, maxFeeRate = 1, avoid = [], retryOnTimeout = false },
+  { fromChannel, toChannel, maxSats = 1, maxMinutes = 3, maxFeeRate = 1, avoid = [], retryAvoidsOnTimeout = 0 },
   choices = {},
   log = { details: false, progress: true }
 ) => {
@@ -155,7 +156,7 @@ const rebalance = async (
       max_rebalance: String(trunc(maxSats)), // sats
       timeout_minutes: trunc(maxMinutes), // minutes
       max_fee_rate: trunc(maxFeeRate), // max fee rate
-      max_fee: trunc(((maxSats * maxFeeRate) / 1e6) * 10), // unused & to avoid set at 10x max fee rate // trunc(maxSats * 0.01)
+      max_fee: trunc(maxSats * 0.01),
       avoid,
       // out_channels: [],
       // in_outound: undefined,
@@ -184,12 +185,29 @@ const rebalance = async (
     log?.progress && console.log('')
     log?.details && console.error(`\n${getDate()} bos.rebalance() aborted:`, JSON.stringify(e))
 
-    // if we're retrying on timeouts & avoid wasn't used, rerun again just once with avoid of low fees
-    if (retryOnTimeout && e[1] === 'ProbeTimeout' && avoid.length === 0) {
-      log?.details && console.error(`\n${getDate()} retrying just once after ProbeTimeout error`)
-      // will avoid fees below 1/3 of requested fee rate for final hop
-      avoid.push(`FEE_RATE<${trunc(maxFeeRate / 3)}/${toChannel}`)
-      return await rebalance({ fromChannel, toChannel, maxSats, maxMinutes, maxFeeRate, avoid }, choices, log)
+    // if we're retrying on timeouts & avoid wasn't used, rerun again with avoid of low fees
+    if (retryAvoidsOnTimeout && e[1] === 'ProbeTimeout' && avoid.length <= 1) {
+      retryAvoidsOnTimeout--
+      const oldAvoidPpm = +(avoid[0] || '').match(/FEE_RATE<(.+?)\//)?.[1] || 0
+      // each new retry moves avoid fee rate 25% closer to half max total fee rate
+      const newAvoidPpm = trunc(oldAvoidPpm * 0.75 + (maxFeeRate / 2) * 0.25)
+      const newAvoid = `FEE_RATE<${newAvoidPpm}/${toChannel}`
+
+      // log?.details &&
+      console.boring(
+        `${getDate()} Retrying after ProbeTimeout error @ ${maxFeeRate} with --avoid ${newAvoid}` +
+          ` (for last peer). Retries left: ${retryAvoidsOnTimeout}`
+      )
+
+      // for simplicity will always overwrite or create first item in avoid array
+      if ((avoid[0] || '').includes('FEE_RATE<')) avoid[0] = newAvoid
+      else avoid.unshift(newAvoid)
+
+      return await rebalance(
+        { fromChannel, toChannel, maxSats, maxMinutes, maxFeeRate, avoid, retryAvoidsOnTimeout },
+        choices,
+        log
+      )
     }
 
     // provide suggested ppm if possible
@@ -300,11 +318,19 @@ const setFees = async (peerPubKey, fee_rate, log = false) => {
 // bos call api commands to lnd
 // bos call getIdentity - get my pub key
 // bos call getChannels - on-chain channel info
+// bos call getNode { public_key, is_omitting_channels: false } - both fees, max/min htlc, updated_at, is_disabled, cltv_delta
 // bos call getFeeRates - has base fee info (via channel or tx ids, not pubkeys)
+// bos call updateRoutingFees - MUST set every value or it is set to default (https://github.com/alexbosworth/ln-service#updateroutingfees)
 // bos call getForwards - forwarding events, choices: either {limit: 5} or {token: `{"offset":10,"limit":5}`}
 // names for methods and choices for arguments via `bos call` or here
 // https://github.com/alexbosworth/ln-service
 // https://github.com/alexbosworth/balanceofsatoshis/blob/master/commands/api.json
+// 'cltv_delta' can just be found in getChannel and getNode, not getChannels, not getFeeRates
+// ^ is set in updateRoutingFees
+// 'max_htlc_mtokens' and 'min_htlc_mtokens' in getChannel and getChannels (@ local_, remote_) and getNode, not getFeeRates
+// ^ updated just in updateRoutingFees
+// 'base_fee_mtokens' in getChannel and getFeeRates and getNode, not getChannels
+// ^ updated in updateRoutingFees
 const callAPI = async (method, choices = {}, log = false) => {
   try {
     log && console.boring(`${getDate()} bos.callAPI() for ${method}`)
@@ -327,8 +353,10 @@ const peers = async (choices = {}, log = false) => {
       fs: { getFile: readFile }, // required
       lnd: await mylnd(),
       omit: [], // required
-      active: true, // only connected peers
-      public: true, // only public peers
+      is_active: !choices.is_offline, // only connected peers
+      is_public: true, // only public peers
+      is_private: false, // no private channels
+      is_offline: false, // online channels only by default
       // earnings_days: 7, // can comment this out
       ...choices
     })
@@ -668,6 +696,94 @@ const customGetReceivedEvents = async (
   return idKeys ? byId : byTime
 }
 
+// gets node info and policies for every channel, slightly reformated
+// if peer_key is provided, will only return channels with that peer
+// if public_key not provided, will use this nodes public key
+const getNodeChannels = async ({ public_key, peer_key } = {}) => {
+  try {
+    if (!public_key) public_key = (await callAPI('getIdentity')).public_key
+    const res = await callAPI('getNode', { public_key, is_omitting_channels: false })
+    // put remote public key directly into channels info
+    // instead of channels being a random array, convert to object where channel id is key
+    // instead of policies being array length 2 make it object with local: {}, and remote: {} data
+    // so getting remote fee rate would be
+    // res.channels[id].policy.remote.fee_rate
+    // and remote public key would be
+    // res.channels[id].public_key
+    const betterChannels = res.channels.reduce((channels_v2, channel) => {
+      const outgoingPolicy = channel.policies.find(p => p.public_key === public_key)
+      const incomingPolicy = channel.policies.find(p => p.public_key !== public_key)
+      const remotePublicKey = incomingPolicy.public_key
+      if (peer_key && peer_key !== remotePublicKey) return channels_v2
+      channels_v2[channel.id] = channel
+      channels_v2[channel.id].local = outgoingPolicy
+      channels_v2[channel.id].remote = incomingPolicy
+      channels_v2[channel.id].public_key = remotePublicKey
+      delete channel.policies
+      return channels_v2
+    }, {})
+    return betterChannels
+  } catch (e) {
+    console.error(JSON.stringify(e))
+    return null
+  }
+}
+
+// safer way to set channel policy to avoid default resets
+// if by_channel_id is specified, looks at channel id keys  for specific settings
+// by_channel_id: {'702673x1331x1': {max_htlc_mtokens: '1000000000' }}
+const setPeerPolicy = async (
+  { peer_key, by_channel_id, base_fee_mtokens, fee_rate, cltv_delta, max_htlc_mtokens, min_htlc_mtokens },
+  log = false
+) => {
+  if (!peer_key) return 1
+  let settings
+  try {
+    // get my public key
+    const me = (await callAPI('getIdentity')).public_key
+    if (!me) return 1
+
+    // get channels for my node with this peer
+    const channels = await getNodeChannels({ public_key: me, peer_key })
+    if (!channels) return 1
+    // log && console.log(`${getDate()} channels before changes: ${JSON.stringify(channels, fixJSON, 2)}`)
+
+    // set settings for each channel with that peer & use ones provided to replace
+    for (const channel of Object.values(channels)) {
+      if (!channel || !channel.local || !channel.remote || !channel.transaction_id) {
+        return 1
+      }
+      const byId = by_channel_id?.[channel.id]
+      // updates seems to fail sometimes for max htlc above wumbo size ~16M completely so lets cap it there
+      // also just in case cap below capacity with subtracted 1% reserve, whichever is smaller
+      const capacity_msats = trunc(0.99 * channel.capacity * 1000)
+      const wumbo_msats = 16777216 * 1000 // 2^24 * 1000
+      let max_htlc_msats = +(byId?.max_htlc_mtokens ?? max_htlc_mtokens ?? channel.local.max_htlc_mtokens)
+      max_htlc_msats = min(max_htlc_msats, capacity_msats, wumbo_msats)
+
+      settings = {
+        // channel to change:
+        transaction_id: channel.transaction_id,
+        transaction_vout: +channel.transaction_vout,
+        // apply by descending priority: by-channel setting, overall setting, and then previous unchanged setting
+        base_fee_mtokens: String(byId?.base_fee_mtokens ?? base_fee_mtokens ?? channel.local.base_fee_mtokens),
+        fee_rate: +(byId?.fee_rate ?? fee_rate ?? channel.local.fee_rate),
+        cltv_delta: +(byId?.cltv_delta ?? cltv_delta ?? channel.local.cltv_delta),
+        min_htlc_mtokens: String(byId?.min_htlc_mtokens ?? min_htlc_mtokens ?? channel.local.min_htlc_mtokens),
+        max_htlc_mtokens: String(max_htlc_msats)
+      }
+      log && console.log('bos call updateRoutingFees', settings)
+      const result = await bos.callAPI('updateRoutingFees', settings)
+      log && console.log({ result })
+    }
+
+    return 0
+  } catch (e) {
+    console.error('error:', JSON.stringify(e), 'with settings:', settings)
+    return 1
+  }
+}
+
 const getDate = timestamp => (timestamp ? new Date(timestamp) : new Date()).toISOString()
 
 // const request = (o, cbk) => cbk(null, {}, {})
@@ -711,6 +827,8 @@ const bos = {
   customGetForwardingEvents,
   sayWithTelegramBot,
   customGetPaymentEvents,
-  customGetReceivedEvents
+  customGetReceivedEvents,
+  getNodeChannels,
+  setPeerPolicy
 }
 export default bos
