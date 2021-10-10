@@ -10,7 +10,7 @@ const { min, max, trunc, floor, abs, random, sqrt, log2, pow } = Math
 const MINUTES_BETWEEN_STEPS = 10
 
 // minimum sats away from 0.5 balance to consider off-balance
-// const MIN_SATS_OFF_BALANCE = 420e3
+const MIN_SATS_OFF_BALANCE = 500e3
 // unbalanced sats below this can stop (bos rebalance requires >50k)
 const MIN_REBALANCE_SATS = 51e3
 
@@ -31,24 +31,24 @@ const MAX_REBALANCE_SATS_KEYSEND = 212121
 
 // suspect might cause tor issues if too much bandwidth being used
 // setting to 1 makes it try just 1 rebalance at a time
-const MAX_PARALLEL_REBALANCES = 10
+const MAX_PARALLEL_REBALANCES = 7
 
 // channels smaller than this not necessary to balance or adjust fees for
 // usually special cases anyway
 // (maybe use proportional fee policy for them instead)
 // 2m for now
 //const MIN_CHAN_SIZE = 2.1e6
-const MIN_CHAN_SIZE = 1950e3
+const MIN_CHAN_SIZE = 1900e3
 
 // multiplier for proportional safety ppm margin
-const SAFETY_MARGIN = 1.75
+const SAFETY_MARGIN = 1.25
 // maximum flat safety ppm margin (proportional below this value)
-const SAFETY_MARGIN_FLAT_MAX = 200
+const SAFETY_MARGIN_FLAT_MAX = 150
 // rebalancing fee rates below this aren't considered for rebalancing
 const MIN_FEE_RATE_FOR_REBALANCE = 1
 
 // max size of fee adjustment to target ppm (upward)
-const NUDGE_UP = 0.0069
+const NUDGE_UP = 0.0121
 // max size of fee adjustment to target ppm (downward)
 const NUDGE_DOWN = NUDGE_UP / 2
 // max days since last successful routing out to allow increasing fee
@@ -61,7 +61,7 @@ const MIN_PPM_ABSOLUTE = 0
 // any ppm above this is not considered for fees, rebalancing, or suggestions
 const MAX_PPM_ABSOLUTE = 1500
 // smallest amount of sats necessary to consider a side not drained
-//const MIN_SATS_PER_SIDE = 1000e3
+const MIN_SATS_PER_SIDE = 1000e3
 
 // max minutes to spend per rebalance try
 const MINUTES_FOR_REBALANCE = 5
@@ -110,7 +110,7 @@ const ALLOW_TOR_RESET = false
 // hours between running bos reconnect
 const MINUTES_BETWEEN_RECONNECTS = 60
 // how often to update fees
-const MINUTES_BETWEEN_FEE_CHANGES = 121
+const MINUTES_BETWEEN_FEE_CHANGES = 180
 
 // show everything
 const VERBOSE = true
@@ -374,14 +374,14 @@ const runBotRebalanceOrganizer = async () => {
       // more than 1 smily = huge discount
       const discount = floor(maxRebalanceRate / resBalance.fee_rate)
       const yays = '😁'.repeat(min(5, discount))
-      if (matchedPair.maxSatsToRebalance < MAX_REBALANCE_SATS) {
+      if (matchedPair.maxSatsToRebalance < MIN_SATS_OFF_BALANCE) {
         // successful & stopping - rebalanced "enough" as sats off-balance below minimum
         matchedPair.done = true
         const tasksDone = matchups.reduce((count, m) => (m.done ? count + 1 : count), 0)
         console.log(
           `${getDate()} Completed${localString} --> ${remoteString}at #${run} ${maxRebalanceRateString} ` +
             `rebalance succeeded for ${pretty(rebalanced)} sats @ ${resBalance.fee_rate} ppm ${yays}` +
-            ` & done! 🍾🥂🏆 ${dim}(${tasksDone}/${matchups.length} done after ${taskLength})${undim}`
+            ` & done! 🏆 ${dim}(${tasksDone}/${matchups.length} done after ${taskLength})${undim}`
         )
         // return matchedPair
       } else if (run >= MAX_BALANCE_REPEATS && discount < 2) {
@@ -580,7 +580,8 @@ const acceptableFlowToRemote = p =>
 const includeForRemoteHeavyRebalance = p =>
   // balance on remote side beyond min-off-balance or enough for max rebalance size
   // channel balance: local 1.0<--0.5-->0.0 remote
-  p.balance < 0.3 &&
+  // p.balance < 0.3 &&
+  isRemoteHeavy(p) &&  
   // large enough channel
   p.totalSats >= MIN_CHAN_SIZE &&
   // enough sats to balance
@@ -599,7 +600,8 @@ const includeForRemoteHeavyRebalance = p =>
 const includeForLocalHeavyRebalance = p =>
   // balance on my side beyond min-off-balance or enough for max rebalance size
   // channel balance: local 1.0<--0.5-->0.0 remote
-  p.balance > 0.7 &&
+  // p.balance > 0.7 &&
+  isLocalHeavy(p) &&  
   p.totalSats >= MIN_CHAN_SIZE &&
   p.unbalancedSats > MIN_REBALANCE_SATS &&
   // only if no settings about it or if no setting for no local-heavy rebalance true
@@ -711,11 +713,35 @@ const runUpdateFeesCheck = async () => {
 
 // logic for updating fees (v3)
 const updateFees = async () => {
+  if (!ADJUST_FEES) return null
   console.boring(`${getDate()} updateFees() v3`)
 
   // generate brand new snapshots
   const allPeers = await generateSnapshots()
-  // adjust fees for these channels
+
+  // just set max htlcs for small channels first
+  // those likely still count for failures
+  const smallPeers = allPeers.filter(
+    p =>
+      !p.is_offline &&
+      !p.is_pending &&
+      !p.is_private &&
+      p.is_active &&
+      // just small channels
+      p.totalSats <= MIN_CHAN_SIZE
+  )
+  for (const peer of smallPeers) {
+    console.boring(
+      `${getDate()} "${peer.alias}" small channels < ${pretty(MIN_CHAN_SIZE)} ` +
+        'sats capacity limit (skipping fee adjustments)'
+    )
+    await bos.setPeerPolicy({
+      peer_key: peer.public_key,
+      by_channel_id: sizeMaxHTLC(peer)
+    })
+  }
+
+  // adjust fees & max htlcs for normal channels
   const peers = allPeers.filter(
     p =>
       !p.is_offline &&
@@ -775,10 +801,9 @@ const updateFees = async () => {
       return trunc(ppmIn)
     }
 
-    let isIncreasing = ADJUST_FEES && flowOutRecentDaysAgo < DAYS_FOR_FEE_INCREASE
+    let isIncreasing = flowOutRecentDaysAgo < DAYS_FOR_FEE_INCREASE
 
     let isDecreasing =
-      ADJUST_FEES &&
       !isIncreasing &&
       flowOutRecentDaysAgo > DAYS_FOR_FEE_REDUCTION &&
       // safer to just skip VERY-remote-heavy channels to avoid false measurements of 0 flow out
@@ -805,17 +830,6 @@ const updateFees = async () => {
     // get the rest of channel policies figured out
     const localSats = ((peer.outbound_liquidity / 1e6).toFixed(1) + 'M').padStart(5)
     const remoteSats = ((peer.inbound_liquidity / 1e6).toFixed(1) + 'M').padEnd(5)
-    const by_channel_id = peer.ids.reduce((final, channel) => {
-      const { local_balance } = channel
-      // shouldn't happen
-      if (local_balance === undefined) return final // process.exit(1)
-
-      // round down to nearest 2^X for max htlc to minimize failures and hide exact balances
-      const safeHTLC = max(1, floor2(local_balance)) * 1000
-      final[channel.id] = { max_htlc_mtokens: safeHTLC }
-
-      return final
-    }, {})
    
     if (isIncreasing) {
       nIncreased++
@@ -847,7 +861,7 @@ const updateFees = async () => {
     // do it
     const errorCodeOnChangeAttempt = await bos.setPeerPolicy({
       peer_key: peer.public_key,
-      by_channel_id, // max htlc sizes
+      by_channel_id: sizeMaxHTLC(peer), // max htlc sizes
       fee_rate: ppmNew // fee rate
     })
 
@@ -1416,13 +1430,13 @@ const generateSnapshots = async () => {
     total unbalanced sats percent:    ${unbalancedPercent}%
     net unbalanced:                   ${pretty(totalSatsOffBalanceSigned)} sats
     ${
-  totalSatsOffBalanceSigned > MAX_REBALANCE_SATS
+  totalSatsOffBalanceSigned > MIN_SATS_OFF_BALANCE
     ? '  (lower on inbound liquidity, get/rent others to open channels to you' +
           ' or loop-out/boltz/muun/WoS LN to on-chain funds)'
     : ''
 }
     ${
-  totalSatsOffBalanceSigned < MAX_REBALANCE_SATS
+  totalSatsOffBalanceSigned < MIN_SATS_OFF_BALANCE
     ? '  (lower on local sats, so open channels to increase local or reduce' +
           ' amount of remote via loop-in or opening channel to sinks like LOOP)'
     : ''
@@ -1478,7 +1492,7 @@ const generateSnapshots = async () => {
     const lastRoutedOutString =
       lastRoutedOut > DAYS_FOR_STATS
         ? `routed-out (-->) ${DAYS_FOR_STATS}+ days ago`
-        : `routed-out (-->) ${lastRoutedOut} days ago`
+        : `routed-out (-->) ${lastRoutedOut.toFixed(1)} days ago`
 
     const issues = []
 
@@ -1597,40 +1611,6 @@ const addDetailsFromSnapshot = peers => {
     // calculateFlowRateMargin(p)
   }
 }
-/*
-// experimental
-const calculateFlowRateMargin = p => {
-  const B = p.balance
-  const fOut = p.routed_out_msats / 1000
-  const fIn = p.routed_in_msats / 1000
-  const MIN_F = MIN_FLOWRATE_PER_DAY
-
-  p.flowMargin = trunc((fOut / DAYS_FOR_STATS + MIN_F) * (1 - B) - (fIn / DAYS_FOR_STATS + MIN_F) * B)
-  p.flowMarginWithRules = isLocalHeavy(p) // B >> 0.5 local
-    ? min(p.flowMargin, -1) // maybe R_out
-    : isRemoteHeavy(p) // B << 0.5 remote
-    ? max(p.flowMargin, 1) // maybe R_in
-    : 0
-
-  // adding this metric that counts days to spend each remaining liquidity
-  // negative suggests flow in needs more inbound liquidity for reliability (R_out)
-  // positive suggests flow out needs more local balance for reliability (R_in)
-  // e.g. huge flow out on balanced channel turns metric positive
-  // e.g. huge flow in on balanced channel turns metric negative
-  // metric is neutral when fOut/fIn = local_sats/remote_sats
-  // fOut/fIn = 2 would correspond to ideally 2x more local sats than remote sats or B~0.67
-  // with positive signal for 0.5 balance channel suggesting rebalance_in
-  // a neutral region can be made by ignoring positive signal when B >= 0.5
-  // and ignoring negative metrics when B <= 0.5
-  // then the negative signal to rebalance_out will only show up at B > 0.67
-  // and positive signal to rebalance_in will only show up at B < 0.5
-  // this will allow the channel to become more reliable in direction the flow happens
-  // and take advantage of "free rebalancing" from routing beyond 0.5 in less used
-  // direction w/o paying to correct it back to 0.5
-
-  // MIN_F = 0 for accurate stat, added to set minimum flow rate to correct for
-}
-*/
 
 // 1. check internet connection, when ok move on
 // 2. do bos reconnect
@@ -1666,9 +1646,9 @@ const runBotConnectionCheck = async ({ quiet = false } = {}) => {
   const peersTotal = peers.length
   const message =
     `🔌 Offline Statistics:
- ${peersOffline.length} / ${peersTotal} peers offline (${((peersOffline.length / peersTotal) * 100).toFixed(0)}%)
- (BoS reconnect every ${MINUTES_BETWEEN_RECONNECTS} minutes).
- Offline: ${peersOffline.map(p => p.alias).join(', ') || 'n/a'}`
+ ${peersOffline.length} / ${peersTotal} peers offline (${((peersOffline.length / peersTotal) * 100).toFixed(0)}%):
+ ${peersOffline.map(p => p.alias).join(', ') || 'n/a'}
+ (BoS reconnects every ${MINUTES_BETWEEN_RECONNECTS} minutes).`
 
   // update user about offline peers just in case
   console.log(`${getDate()} ${message}`)
@@ -1795,10 +1775,10 @@ const initialize = async () => {
 const addSafety = ppm => trunc(min(ppm * SAFETY_MARGIN + 1, ppm + SAFETY_MARGIN_FLAT_MAX))
 const subtractSafety = ppm => trunc(max((ppm - 1) / SAFETY_MARGIN, ppm - SAFETY_MARGIN_FLAT_MAX, 0))
 
-// const isRemoteHeavy = p => p.unbalancedSatsSigned < -MIN_SATS_OFF_BALANCE
+const isRemoteHeavy = p => p.unbalancedSatsSigned < -MIN_SATS_OFF_BALANCE
 // const isRemoteHeavy = p => getRuleFromSettings({ alias: p.alias })?.no_local_rebalance ? true : (p.balance < 0.3)
 
-// const isLocalHeavy = p => p.unbalancedSatsSigned > MIN_SATS_OFF_BALANCE
+const isLocalHeavy = p => p.unbalancedSatsSigned > MIN_SATS_OFF_BALANCE
 // const isLocalHeavy = p => getRuleFromSettings({ alias: p.alias })?.no_remote_rebalance ? true : (p.balance > 0.7)
 
 const isNetOutflowing = p => p.routed_out_msats - p.routed_in_msats > 0
@@ -1806,11 +1786,11 @@ const isNetOutflowing = p => p.routed_out_msats - p.routed_in_msats > 0
 const isNetInflowing = p => p.routed_out_msats - p.routed_in_msats < 0
 
 // very remote heavy = very few sats on local side, the less the remote-heavier
-//const isVeryRemoteHeavy = p => p.outbound_liquidity < MIN_SATS_PER_SIDE
-const isVeryRemoteHeavy = p => p.balance < 0.1
+const isVeryRemoteHeavy = p => p.outbound_liquidity < MIN_SATS_PER_SIDE
+//const isVeryRemoteHeavy = p => p.balance < 0.15
 // very local heavy = very few sats on remote side, the less the local-heavier
-//const isVeryLocalHeavy = p => p.inbound_liquidity < MIN_SATS_PER_SIDE
-const isVeryLocalHeavy = p => p.balance > 0.9
+const isVeryLocalHeavy = p => p.inbound_liquidity < MIN_SATS_PER_SIDE
+//const isVeryLocalHeavy = p => p.balance > 0.85
 
 const daysAgo = ts => (Date.now() - ts) / (1000 * 60 * 60 * 24)
 
@@ -1825,6 +1805,26 @@ const isEmpty = obj => !!obj && Object.keys(obj).length === 0 && obj.constructor
 const isNotEmpty = obj => !isEmpty(obj)
 
 console.boring = (...args) => console.log(`${dim}${args}${undim}`)
+
+// rounds down to nearest power of 10
+// const floor10 = v => pow(10, floor(log10(v)))
+// rounds down to nearest power of 2
+const floor2 = v => pow(2, floor(log2(v)))
+
+const sizeMaxHTLC = peer =>
+  peer.ids?.reduce((final, channel) => {
+    const { local_balance } = channel
+    // shouldn't happen
+    if (local_balance === undefined) return final
+
+    // round down to nearest 2^X for max htlc to minimize failures and hide exact balances
+    const safeHTLC = max(1, floor2(local_balance)) * 1000
+    final[channel.id] = { max_htlc_mtokens: safeHTLC }
+
+    console.boring(`  ${channel.id} max htlc safe size to be set to ${pretty(safeHTLC / 1000)} sats`)
+
+    return final
+  }, {})
 
 // if quiet nothing is printed and exit request isn't checked
 const sleep = async (ms, { msg = '', quiet = false } = {}) => {
@@ -1854,12 +1854,6 @@ const ca = alias => alias.replace(/[^\x00-\x7F]/g, '').trim() // .replace(/[\u{0
 // console log colors
 const dim = '\x1b[2m'
 const undim = '\x1b[0m'
-
-// rounds down to nearest power of 10
-// const floor10 = v => pow(10, floor(log10(v)))
-
-// rounds down to nearest power of 2
-const floor2 = v => pow(2, floor(log2(v)))
 
 // returns mean, truncated fractions
 const median = (numbers = [], { f = v => v, pr = 0 } = {}) => {
