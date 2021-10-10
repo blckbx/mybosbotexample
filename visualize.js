@@ -1,4 +1,4 @@
-// run with: node visualize
+// run with: npm link balanceofsatoshis && node visualize
 // needs bos.js, the wrapper, in same folder
 // then just need to open the page and set settings with query string
 // xAxis, yAxis, and rAxis can be set to days', ppm, routed, earned, count (for grouped)
@@ -11,7 +11,11 @@
 // http://localhost:7890/?daysForStats=14&xAxis=ppm&yAxis=earned&from=acinq
 // http://localhost:7890/?daysForStats=14&xAxis=days&yAxis=earned
 // http://localhost:7890/?daysForStats=14&xAxis=days&yAxis=earned&xGroups=10
-// http://localhost:7890/?daysForStats=30&xAxis=days&yAxis=earned&xGroups=10&type=line
+// http://localhost:7890/?daysForStats=90&xAxis=days&yAxis=earned&xGroups=10&type=line
+// http://localhost:7890/?daysForStats=30&xAxis=ppm&yAxis=earned&rAxis=count&xGroups=15
+// http://localhost:7890/?daysForStats=7&xAxis=ppm&yAxis=earned&rAxis=routed
+// http://localhost:7890/?daysForStats=7&xAxis=days&yAxis=earned&rAxis=count&xGroups=20
+// http://localhost:7890/?daysForStats=30&yAxis=count&xAxis=routed&xGroups=21&type=line
 
 import bos from './bos.js'
 import fs from 'fs'
@@ -23,7 +27,7 @@ const HOST = 'localhost'
 const HTML_PORT = '7890' // 80 probably taken
 
 // eslint-disable-next-line no-unused-vars
-const { max, min, floor, ceil, abs, trunc, log, exp, sqrt, pow } = Math
+const { max, min, floor, ceil, abs, trunc, log, exp, sqrt, pow, log10 } = Math
 // eslint-disable-next-line no-extend-native
 Object.defineProperty(Array.prototype, 'fsort', {
   value: function (compare) {
@@ -41,16 +45,18 @@ Object.defineProperty(Array.prototype, 'fsort', {
 const logPlots = ['ppm', 'earned', 'routed']
 
 const generatePage = async ({
-  daysForStats,
+  daysForStats = 7,
   xGroups = 0, // round number of groups along x axis
   rAxis = '', // ppm, earned, routed, count
-  xAxis = '', // days, ppm, earned, routed
-  yAxis = '', // days, ppm, earned, routed, count
+  xAxis = 'ppm', // days, ppm, earned, routed
+  yAxis = 'routed', // days, ppm, earned, routed, count
   out = '', // partial alias or public key match
   from = '', // partial alias or public key match
   type = 'bubble' // can also be line
 }) => {
-  // const out = process.argv.slice(2).join(' ')
+  // ensure integers where necessary
+  if (xGroups) xGroups = +xGroups
+  if (daysForStats) daysForStats = +daysForStats
 
   let peerForwards = []
   const pubkeyToAlias = {}
@@ -92,6 +98,7 @@ const generatePage = async ({
     peerForwards = peersForwards
   }
 
+  // console.log(peerForwards[0])
   console.log('loaded forwards, n:', peerForwards.length, out)
 
   // console.log(Object.keys(peersForwards).length)
@@ -110,12 +117,13 @@ const generatePage = async ({
   const [minTime, maxTime] = getMinMax(peerForwards.map(f => f.created_at_ms))
 
   // turn into data
+  const now = Date.now()
   const data = peerForwards.map(p => {
     return {
-      ppm: (1e6 * abs(p.fee_mtokens - 0)) / p.mtokens + 1,
+      ppm: (1e6 * p.fee_mtokens) / p.mtokens,
       // days since earliest event
       // days: (p.created_at_ms - maxTime) / 1000 / 60 / 60 / 24,
-      days: -(Date.now() - p.created_at_ms) / 1000 / 60 / 60 / 24,
+      days: -(now - p.created_at_ms) / 1000 / 60 / 60 / 24,
       time: new Date(p.created_at_ms).toISOString(),
       // hour: (new Date(p.created_at_ms).getUTCHours() + 24 - 5) % 24, // 24 hours EST time
       routed: p.mtokens / 1000,
@@ -130,26 +138,37 @@ const generatePage = async ({
   const isTimeOnX = xAxis === 'days'
   const isGrouped = xGroups !== 0
 
-  const [xMin, xMax] = getMinMax(data.map(d => d[xAxis]))
+  const isLogX = logPlots.some(a => a === xAxis)
+  const isLogY = logPlots.some(a => a === yAxis)
+
+  // use non-0 values only for log plot
+  const [xMin, xMax] = getMinMax(data.map(d => d[xAxis]).filter(d => !isLogX || d > 0))
+
   const linSize = abs(xMax - xMin) / xGroups
 
   const multiple = pow(xMax / xMin, 1 / xGroups)
   const logLevels = []
-  for (let i = 0; i < xGroups; i++) logLevels.push(xMin * pow(multiple, i))
-  const gLog = v => logLevels.find(L => L > v)
+  if (isLogX & isGrouped) {
+    for (let i = 0; i < xGroups; i++) logLevels.unshift(xMin * pow(multiple, i))
+  }
+  // if (isLogX & isGrouped) console.log({ multiple, xMax, xMin, xGroups, logLevels, logLevelsLength: logLevels.length })
+  // find highest "rounded" level below data point and then move 1/2 level up for middle of range
+  const gLog = v => (logLevels.find(L => L <= v) || logLevels[logLevels.length - 1]) * pow(multiple, 0.5) //
   const gLinear = (v, size) => ceil(v / size) * size // + 0.5 * size // was wrapped in trunc
 
   const dataGroups = {}
   if (isGrouped) {
     data.forEach(d => {
       // const group = gLog(d.ppm) // gLinear(d.ppm, xSize)
-      const group = logPlots.some(a => a === xAxis) ? gLog(d[xAxis]) : gLinear(d[xAxis], linSize)
-      const ppm = xAxis === 'ppm' ? group : d.ppm
-      const days = xAxis === 'days' ? group : d.days
+      const group = isLogX ? gLog(d[xAxis]) : gLinear(d[xAxis], linSize)
+      // if (group === undefined) console.log(gLinear(d[xAxis], linSize))
       const routed = (dataGroups[String(group)]?.routed || 0) + d.routed
       const earned = (dataGroups[String(group)]?.earned || 0) + d.earned
       const count = (dataGroups[String(group)]?.count || 0) + 1
-      dataGroups[String(group)] = { days, routed, earned, count, ppm }
+      // const ppm = xAxis === 'ppm' ? group : (earned / routed) * 1e6
+      const ppm = (earned / routed) * 1e6 // actual total effective ppm
+      const days = xAxis === 'days' ? group : d.days
+      dataGroups[String(group)] = { days, routed, earned, count, ppm, group }
     })
   }
 
@@ -162,28 +181,42 @@ const generatePage = async ({
 
   const dataForPlot = (isGrouped ? dataAfterGrouping : data)
     // including everything plus actually define x, y, r
-    .map(d => ({ ...d, x: d[xAxis], y: d[yAxis], r: d[rAxis] }))
+    .map(d => ({ ...d, x: d.group ?? d[xAxis], y: d[yAxis], r: sqrt(d[rAxis] || 1) }))
     // for line plots this helps
     .fsort((a, b) => a.x - b.x)
-
-  // console.log('groups:', dataForPlot.length, 'e.g.', dataForPlot[dataForPlot.length - 1])
 
   // fix radius
   const [rMin, rMax] = getMinMax(dataForPlot.map(d2 => d2.r))
   const scaleFromTo = ({ v, minFrom, maxFrom, minTo, maxTo }) =>
     maxFrom > minFrom ? ((v - minFrom) / (maxFrom - minFrom)) * (maxTo - minTo) + minTo : minTo
   const MIN_RADIUS_PX = 2
-  const MAX_RADIUS_PX = 10
+  const MAX_RADIUS_PX = 8
   dataForPlot.forEach(d2 => {
     d2.r = scaleFromTo({ v: d2.r, minFrom: rMin, maxFrom: rMax, minTo: MIN_RADIUS_PX, maxTo: MAX_RADIUS_PX })
   })
 
-  console.log('showing points:', dataForPlot.length)
+  const [xMinPlot, xMaxPlot] = getMinMax(dataForPlot.map(d => d.x))
+  const [yMinPlot, yMaxPlot] = getMinMax(dataForPlot.map(d => d.y))
 
   const dataString1 = JSON.stringify(dataForPlot)
 
   const outOf = out ? 'out of ' + peerOut?.alias : ''
   const inFrom = from ? 'in from ' + peerIn?.alias : ''
+
+  // annoys me can't see max axis label on some log axis
+  const logMaxX = isLogX ? pow(10, ceil(log10(xMaxPlot))) : null
+  const logMaxY = isLogY ? pow(10, ceil(log10(yMaxPlot))) : null
+
+  // if few enough show what specific events are
+  if (!isGrouped && dataForPlot.length < 42) {
+    for (const f of dataForPlot) {
+      console.log(`from: ${f.from.padEnd(28)} to: ${f.to.padEnd(28)} amt: ${f.routed.toFixed(3).padStart(15)}`)
+    }
+  }
+
+  console.log('showing points:', dataForPlot.length)
+  // console.log(dataForPlot[0])
+  // console.log({ logMaxX, logMaxY, xMaxPlot, yMaxPlot })
 
   // https://cdnjs.com/libraries/Chart.js
   // prettier-ignore
@@ -243,10 +276,10 @@ const generatePage = async ({
     lineTension: 0.5,
     scales: {
       x: {
-        type: '${logPlots.some(a => a === xAxis) ? 'logarithmic' : 'linear'}',
+        type: '${isLogX ? 'logarithmic' : 'linear'}',
         // type: 'linear',
         // min: 100,
-        // max: 1e6,
+        ${logMaxX ? 'max: ' + logMaxX + ',' : ''}
         suggestedMax: 0,
         position: 'bottom',
         grace: '10%',
@@ -256,9 +289,9 @@ const generatePage = async ({
         }
       },
       y: {
-        type: '${logPlots.some(a => a === yAxis) ? 'logarithmic' : 'linear'}',
+        type: '${isLogY ? 'logarithmic' : 'linear'}',
         // min: 100,
-        // max: 100e3,
+        ${logMaxY ? 'max: ' + logMaxY + ',' : ''}
         // suggestedMax: 100e6,
         grace: '10%',
         position: 'left',
@@ -272,7 +305,7 @@ const generatePage = async ({
 
   Chart.defaults.font.size = 21
 
-  const labelRadius = '${rAxis ? rAxis + ', ' : ' '}'
+  const labelRadius = '${rAxis && type === 'bubble' ? 'area ∝ ' + rAxis + ', ' : ' '}'
   const labelGroups = '${xGroups ? `grouped into ${xGroups} x-axis regions, ` : ' '}'
   const labelCount = 'forwards count: ${peerForwards.length}'
   const data = {
@@ -312,7 +345,6 @@ const generatePage = async ({
     res.setHeader('Content-Type', 'text/html')
     res.writeHead(200)
     const pageSettings = {
-      daysForStats: 30,
       ...(q || {})
     }
     console.log({ pageSettings })
