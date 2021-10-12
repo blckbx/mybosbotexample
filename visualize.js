@@ -1,29 +1,35 @@
+// needs visualize.js and bos.js, the wrapper, in same folder
 // run with: npm link balanceofsatoshis && node visualize
-// needs bos.js, the wrapper, in same folder
+// makes webpage visual available on local machine at e.g. http://localhost:7890
+// and local network at e.g. http://192.168.1.123:7890
+// umbrel shortcut for local address also works with port specified, e.g.: http://umbrel.local:7890
 // then just need to open the page and set settings with query string
 // xAxis, yAxis, and rAxis can be set to days', ppm, routed, earned, count (for grouped)
 // can combine items into xGroups number of groups along x axis
 // ppm, routed, earned will be plotted in log scale, days in linear
+// roundDown=1 will round down to nearest sat as a way to remove sub-satoshi base fees
 // e.g.
-// http://localhost:7890/?daysForStats=14&xAxis=ppm&yAxis=earned
-// http://localhost:7890/?daysForStats=14&xAxis=ppm&yAxis=earned&xGroups=10
-// http://localhost:7890/?daysForStats=14&xAxis=ppm&yAxis=earned&out=aci
-// http://localhost:7890/?daysForStats=14&xAxis=ppm&yAxis=earned&from=acinq
-// http://localhost:7890/?daysForStats=14&xAxis=days&yAxis=earned
-// http://localhost:7890/?daysForStats=14&xAxis=days&yAxis=earned&xGroups=10
-// http://localhost:7890/?daysForStats=90&xAxis=days&yAxis=earned&xGroups=10&type=line
-// http://localhost:7890/?daysForStats=30&xAxis=ppm&yAxis=earned&rAxis=count&xGroups=15
-// http://localhost:7890/?daysForStats=7&xAxis=ppm&yAxis=earned&rAxis=routed
-// http://localhost:7890/?daysForStats=7&xAxis=days&yAxis=earned&rAxis=count&xGroups=20
-// http://localhost:7890/?daysForStats=30&yAxis=count&xAxis=routed&xGroups=21&type=line
+// http://192.168.1.247:7890/?daysForStats=7&xGroups=0&xAxis=ppm&yAxis=earned&rAxis=&out=&from=&roundDown=1&type=bubble
+// http://192.168.1.123:7890/?daysForStats=14&xAxis=ppm&yAxis=earned
+// http://192.168.1.123:7890/?daysForStats=14&xAxis=ppm&yAxis=earned&xGroups=10
+// http://192.168.1.123:7890/?daysForStats=14&xAxis=ppm&yAxis=earned&out=aci
+// http://192.168.1.123:7890/?daysForStats=14&xAxis=ppm&yAxis=earned&from=acinq
+// http://192.168.1.123:7890/?daysForStats=14&xAxis=days&yAxis=earned
+// http://192.168.1.123:7890/?daysForStats=14&xAxis=days&yAxis=earned&xGroups=10
+// http://192.168.1.123:7890/?daysForStats=90&xAxis=days&yAxis=earned&xGroups=10&type=line
+// http://192.168.1.123:7890/?daysForStats=30&xAxis=ppm&yAxis=earned&rAxis=count&xGroups=15
+// http://192.168.1.123:7890/?daysForStats=7&xAxis=ppm&yAxis=earned&rAxis=routed
+// http://192.168.1.123:7890/?daysForStats=7&xAxis=days&yAxis=earned&rAxis=count&xGroups=20
+// http://192.168.1.123:7890/?daysForStats=30&yAxis=count&xAxis=routed&xGroups=21&type=line
 
 import bos from './bos.js'
 import fs from 'fs'
+import os from 'os'
 
 import http from 'http'
 import url from 'url'
 
-const HOST = 'localhost'
+let networkLocation = '0.0.0.0' // will try to overwrite with local network address
 const HTML_PORT = '7890' // 80 probably taken
 
 // eslint-disable-next-line no-unused-vars
@@ -35,28 +41,28 @@ Object.defineProperty(Array.prototype, 'fsort', {
   }
 })
 
-// const xGroups = 300
-// const daysForStats = 30
-// const radiusLabel = 'Area ∝ earned amt' // 'Area ∝ count'
-// const yAxisLabel = 'Count' // 'Earned fees /sats'
-// const xAxisLabel = 'Fee /ppm'
-// const xAxisLabel = 'Days' // 'Effective fee /ppm'
-
 const logPlots = ['ppm', 'earned', 'routed']
 
 const generatePage = async ({
-  daysForStats = 7,
+  daysForStats, // number of days to look back at
   xGroups = 0, // round number of groups along x axis
   rAxis = '', // ppm, earned, routed, count
-  xAxis = 'ppm', // days, ppm, earned, routed
-  yAxis = 'routed', // days, ppm, earned, routed, count
+  xAxis = 'earned', // days, ppm, earned, routed
+  yAxis = 'ppm', // days, ppm, earned, routed, count
   out = '', // partial alias or public key match
   from = '', // partial alias or public key match
-  type = 'bubble' // can also be line
+  type = 'bubble', // can also be line
+  roundDown = '' // 1 or ''/0 ignore milisats (helps w/ removing <1 sat base fee)
 }) => {
   // ensure integers where necessary
   if (xGroups) xGroups = +xGroups
+  else xGroups = 0
+
   if (daysForStats) daysForStats = +daysForStats
+  else daysForStats = 7
+
+  if (+roundDown) roundDown = true
+  else roundDown = false
 
   let peerForwards = []
   const pubkeyToAlias = {}
@@ -81,6 +87,13 @@ const generatePage = async ({
         peers.find(p => p.public_key.includes(out.toLowerCase())) ||
         peers.find(p => p.alias.toLowerCase() === out.toLowerCase()) ||
         peers.find(p => p.alias.toLowerCase().includes(out.toLowerCase()))
+      // if node still exists this will find alias and public key
+      if (!peerOut) {
+        peerOut = (await bos.find(out))?.nodes?.[0]
+        if (peerOut) pubkeyToAlias[peerOut.public_key] = peerOut.alias
+      }
+      // if not doesn't still exist, would have to just match channel id
+      peerOut = peerOut ?? { alias: 'unknown', public_key: '', id: out }
     }
 
     if (from) {
@@ -88,11 +101,32 @@ const generatePage = async ({
         peers.find(p => p.public_key.includes(from.toLowerCase())) ||
         peers.find(p => p.alias.toLowerCase() === from.toLowerCase()) ||
         peers.find(p => p.alias.toLowerCase().includes(from.toLowerCase()))
+      // if node still exists this will find alias and public key
+      if (!peerIn) {
+        peerIn = (await bos.find(from))?.nodes?.[0]
+        if (peerIn) pubkeyToAlias[peerIn.public_key] = peerIn.alias
+      }
+      // if not doesn't still exist, would have to just match channel id
+      peerIn = peerIn ?? { alias: 'unknown', public_key: '', id: from }
     }
 
-    peerForwards = peersForwards
-      .filter(p => !out || p.outgoing_peer === peerOut.public_key)
-      .filter(p => !from || p.incoming_peer === peerIn.public_key)
+    peerOut && console.log({ peerOut })
+    peerIn && console.log({ peerIn })
+
+    console.log('original number of forwards for all peers:', peersForwards.length)
+
+    if (out) {
+      peerForwards = peersForwards.filter(p =>
+        out ? p.outgoing_peer === peerOut.public_key || p.outgoing_channel === peerOut.id : true
+      )
+      console.log('after filtering for out-peer:', peerForwards.length)
+    }
+    if (from) {
+      peerForwards = peerForwards.filter(p =>
+        from ? p.incoming_peer === peerIn.public_key || p.incoming_channel === peerIn.id : true
+      )
+      console.log('after filtering for from-peer:', peerForwards.length)
+    }
   } else {
     // if every peer
     peerForwards = peersForwards
@@ -116,33 +150,49 @@ const generatePage = async ({
   // eslint-disable-next-line no-unused-vars
   const [minTime, maxTime] = getMinMax(peerForwards.map(f => f.created_at_ms))
 
+  // sats floor used if roundDown turned on
+  const sf = mtokens => (roundDown ? floor(mtokens / 1000) * 1000 : mtokens)
+
+  // figure out which are log scale plots
+  const isLogX = logPlots.some(a => a === xAxis)
+  const isLogY = logPlots.some(a => a === yAxis)
+
   // turn into data
   const now = Date.now()
-  const data = peerForwards.map(p => {
-    return {
-      ppm: (1e6 * p.fee_mtokens) / p.mtokens,
-      // days since earliest event
-      // days: (p.created_at_ms - maxTime) / 1000 / 60 / 60 / 24,
-      days: -(now - p.created_at_ms) / 1000 / 60 / 60 / 24,
-      time: new Date(p.created_at_ms).toISOString(),
-      // hour: (new Date(p.created_at_ms).getUTCHours() + 24 - 5) % 24, // 24 hours EST time
-      routed: p.mtokens / 1000,
-      earned: p.fee_mtokens / 1000,
-      from: pubkeyToAlias[p.incoming_peer] || p.incoming_peer,
-      to: pubkeyToAlias[p.outgoing_peer] || p.outgoing_peer
-    }
-  })
+  const data = peerForwards
+    .map(p => {
+      return {
+        ppm: (1e6 * sf(p.fee_mtokens)) / p.mtokens,
+        days: -(now - p.created_at_ms) / 1000 / 60 / 60 / 24,
+        time: new Date(p.created_at_ms).toISOString(),
+        hour: (new Date(p.created_at_ms).getUTCHours() + 24 - 5) % 24, // 24 hours EST time
+        routed: p.mtokens / 1000,
+        earned: sf(p.fee_mtokens) / 1000,
+        from: (pubkeyToAlias[p.incoming_peer] || '') + ' ' + p.incoming_channel,
+        to: (pubkeyToAlias[p.outgoing_peer] || '') + ' ' + p.outgoing_channel
+      }
+    })
+    // remove 0 values for log plots
+    .filter(d => {
+      if (isLogX && d[xAxis] === 0) return false
+      if (isLogY && d[yAxis] === 0) return false
+      return true
+    })
+
+  const zerosRemoved = peerForwards.length - data.length
+  if (zerosRemoved) console.log(`removed ${zerosRemoved} data points with 0 value on log scale axis`)
 
   // aggregate data
 
   const isTimeOnX = xAxis === 'days'
   const isGrouped = xGroups !== 0
 
-  const isLogX = logPlots.some(a => a === xAxis)
-  const isLogY = logPlots.some(a => a === yAxis)
-
-  // use non-0 values only for log plot
-  const [xMin, xMax] = getMinMax(data.map(d => d[xAxis]).filter(d => !isLogX || d > 0))
+  const [xMin, xMax] = getMinMax(
+    data
+      .map(d => d[xAxis])
+      // use non-0 values only for log plot
+      .filter(d => !isLogX || d > 0)
+  )
 
   const linSize = abs(xMax - xMin) / xGroups
 
@@ -195,12 +245,12 @@ const generatePage = async ({
     d2.r = scaleFromTo({ v: d2.r, minFrom: rMin, maxFrom: rMax, minTo: MIN_RADIUS_PX, maxTo: MAX_RADIUS_PX })
   })
 
-  const [xMinPlot, xMaxPlot] = getMinMax(dataForPlot.map(d => d.x))
-  const [yMinPlot, yMaxPlot] = getMinMax(dataForPlot.map(d => d.y))
+  const [, xMaxPlot] = getMinMax(dataForPlot.map(d => d.x))
+  const [, yMaxPlot] = getMinMax(dataForPlot.map(d => d.y))
 
   const dataString1 = JSON.stringify(dataForPlot)
 
-  const outOf = out ? 'out of ' + peerOut?.alias : ''
+  const outOf = out ? 'out to ' + peerOut?.alias : ''
   const inFrom = from ? 'in from ' + peerIn?.alias : ''
 
   // annoys me can't see max axis label on some log axis
@@ -243,7 +293,6 @@ const generatePage = async ({
   <div class="chart-container" style="position: relative; height: 80vh; width: 80vw; margin: 3vh auto;">
   <canvas id="chart" width="400" height="400"></canvas>
   </div>
-
   <script
     src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.5.1/chart.min.js"
     integrity="sha512-Wt1bJGtlnMtGP0dqNFH1xlkLBNpEodaiQ8ZN5JLA5wpc1sUlk/O5uuOMNgvzddzkpvZ9GLyYNa8w2s7rqiTk5Q=="
@@ -253,14 +302,6 @@ const generatePage = async ({
   <script>
   /* eslint-disable */
   const options = {
-    // tooltips: {
-    //   mode: 'index',
-    //   intersect: false
-    // },
-    // hover: {
-    //   mode: 'index',
-    //   intersect: false
-    // },
     plugins: {
       tooltip: {
         callbacks: {
@@ -334,23 +375,53 @@ const generatePage = async ({
   return myPage
 }
 
+// this gets local network ip
+
+const interfaces = os.networkInterfaces()
+for (const k in interfaces) {
+  for (const k2 in interfaces[k]) {
+    const address = interfaces[k][k2]
+    if (address.address.startsWith('192.168')) {
+      networkLocation = address.address
+      break
+    }
+  }
+}
+
+if (networkLocation === 'localhost') {
+  console.log('no local network ip found')
+}
+
 // serve html on HOST:HTML_PORT
 ;(async () => {
   const server = http.createServer(async (req, res) => {
     // print request url info
-    const q = url.parse(req.url, true).query
-    // console.log(url.parse(req.url, true))
+    const pageSettings = { ...url.parse(req.url, true).query }
+    console.log({ pageSettings })
 
     // generate response
-    res.setHeader('Content-Type', 'text/html')
-    res.writeHead(200)
-    const pageSettings = {
-      ...(q || {})
+    if (req.url === '/') {
+      // redirect to page with querry items written out for easier editing
+      console.log('redirecting')
+      res.writeHead(302, {
+        Location: '/?daysForStats=7&xGroups=0&xAxis=ppm&yAxis=earned&rAxis=&out=&from=&roundDown=&type=bubble'
+      })
+      res.end()
+    } else {
+      // return the full html page from string
+      console.log('rendering')
+      res.setHeader('Content-Type', 'text/html')
+      res.writeHead(200)
+      res.end(await generatePage(pageSettings))
     }
-    console.log({ pageSettings })
-    res.end(await generatePage(pageSettings))
   })
-  server.listen(HTML_PORT, HOST, () => {
-    console.log(`Visualization is available on http://${HOST}:${HTML_PORT}`)
+  server.listen(HTML_PORT, '0.0.0.0', () => {
+    console.log(
+      `Visualization is available on lnd computer at http://localhost:${HTML_PORT} (can change port by changing HTML_PORT in script)`
+    )
+    if (networkLocation !== '0.0.0.0') {
+      console.log(`Visualization is available on local network at http://${networkLocation}:${HTML_PORT}`)
+    }
+    console.log(`If port is closed might need to open. On ubuntu with ufw firewall: sudo ufw allow ${HTML_PORT}`)
   })
 })()
