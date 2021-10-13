@@ -6,6 +6,14 @@ import bos from './bos.js' // my wrapper for bos
 
 const { min, max, trunc, floor, abs, random, sqrt, log2, pow } = Math
 
+// MANAGEMENT SWITCHES
+// allow BOS reconnect
+const ALLOW_BOS_RECONNECT = false
+// allow adjusting fees
+const ADJUST_FEES = false
+// allow rebalancing
+const DO_REBALANCING = false
+
 // time to sleep between trying a bot step again
 const MINUTES_BETWEEN_STEPS = 10
 
@@ -48,13 +56,13 @@ const SAFETY_MARGIN_FLAT_MAX = 150
 const MIN_FEE_RATE_FOR_REBALANCE = 1
 
 // max size of fee adjustment to target ppm (upward)
-const NUDGE_UP = 0.0121
+const NUDGE_UP = 0.0069
 // max size of fee adjustment to target ppm (downward)
 const NUDGE_DOWN = NUDGE_UP / 2
 // max days since last successful routing out to allow increasing fee
 const DAYS_FOR_FEE_INCREASE = 1.2
 // min days of no routing activity before allowing reduction in fees
-const DAYS_FOR_FEE_REDUCTION = 5.1
+const DAYS_FOR_FEE_REDUCTION = 2.1
 
 // minimum ppm ever possible
 const MIN_PPM_ABSOLUTE = 0
@@ -83,9 +91,6 @@ const MAX_BALANCE_REPEATS = 5
 // ms to put between each rebalance launch for safety
 const STAGGERED_LAUNCH_MS = 1111
 
-// allow adjusting fees
-const ADJUST_FEES = true
-
 // as 0-profit fee rate increases, fee rate where where proportional
 // fee takes over flat one is
 // (break even fee rate) * SAFETY_MARGIN = SAFETY_MARGIN_FLAT_MAX
@@ -103,7 +108,6 @@ const DAYS_FOR_STATS = 7
 
 // fraction of peers that need to be offline to restart tor service
 const PEERS_OFFLINE_MAXIMUM = 0.33 // 33%
-const ALLOW_BOS_RECONNECT = true
 const ALLOW_TOR_RESET = false
 // const COMMAND_TO_RUN_FOR_RESET = ''
 
@@ -164,6 +168,7 @@ const runBot = async () => {
 
 // experimental parallel rebalancing function (unsplit, wip)
 const runBotRebalanceOrganizer = async () => {
+  if(!DO_REBALANCING) return null
   console.boring(`${getDate()} runBotRebalanceOrganizer()`)
   // match up peers
   // high weight lets channels get to pick good peers first (not always to occasionally search for better matches)
