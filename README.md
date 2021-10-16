@@ -24,6 +24,7 @@ Edit index.js to your needs. At the top of the script set which `MANAGEMENT SWIT
 `DO_REBALANCING`: bosbot rebalances channels which are depleted to local or remote side (500_000 sats off balance with channel size above 2M)
 
 **Useful settings:**
+
 `MIN_PPM_ABSOLUTE`: minimum fees
 
 `MAX_PPM_ABSOLUTE`: maximum fees
