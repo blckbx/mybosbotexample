@@ -1,4 +1,4 @@
-## mybosbotexample
+## mybosbotexample - Don't use as is - Don't trust, verify!
 
 **Prerequisites:**
 
