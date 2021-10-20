@@ -37,7 +37,7 @@ Edit index.js to your needs. At the top of the script set which `MANAGEMENT SWIT
 1) runBotReconnectCheck()
 2) runUpdateFeesCheck()
 3) runBotRebalanceOrganizer()
-4) runBot() // repeat every 10 minutes (`MINUTES_BETWEEN_STEPS`)
+4) runBot() // repeat every x minutes (`MINUTES_BETWEEN_STEPS`)
 
 **Fine-Tuning:**
 1) Setup Telegram Bot: Edit settings.json to your needs. Add HTTP API Token (set by BotFather) and chat id (lookup "/id" on Telegram).
