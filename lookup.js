@@ -1,3 +1,6 @@
+// quick data lookup on a peer: channel data, node features, ppm history
+// example usage: node lookup ACINQ
+
 import fs from 'fs'
 
 const BALANCING_LOG_PATH = './peers'
