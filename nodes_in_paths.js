@@ -1,3 +1,7 @@
+// lookup most used nodes in historic rebalancing paths
+// example usage: node node_in_paths
+// settings: DAYS_FOR_STATS = number of days to look back, SHOW_PEERS = include already connected peers
+
 import fs from 'fs'
 import bos from './bos.js'
 
