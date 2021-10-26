@@ -18,7 +18,6 @@ const ALLOW_REBALANCING = false
 // create request file (resetRequest.json) for script with sudo permission at current timestamp
 // when it sees higher timestamp it will execute the action and erase the request file
 const ALLOW_TOR_RESET = false
-// MANAGEMENT SWITCHES
 
 // time to sleep between trying a bot step again
 const MINUTES_BETWEEN_STEPS = 5
@@ -33,7 +32,7 @@ const MIN_REBALANCE_SATS = 51e3
 // smaller = can use smaller liquidity/channels for cheaper/easier rebalances
 // bos rebalance does probing + size up htlc strategy
 // (bos rebalance requires >50k)
-const MAX_REBALANCE_SATS = 400e3
+const MAX_REBALANCE_SATS = 212121
 
 // rebalance with faster keysends after bos rebalance works
 // (faster but higher risk of stuck sats so I send less)
@@ -45,7 +44,7 @@ const MAX_REBALANCE_SATS_KEYSEND = 212121
 
 // suspect might cause tor issues if too much bandwidth being used
 // setting to 1 makes it try just 1 rebalance at a time
-const MAX_PARALLEL_REBALANCES = 5
+const MAX_PARALLEL_REBALANCES = 7
 
 // would average in earned/routed out fee rate measured in DAYS_FOR_STATS
 // to determine what fee rate to use for rebalance
@@ -57,7 +56,7 @@ const INCLUDE_EARNED_FEE_RATE_FOR_REBALANCE = true
 // (maybe use proportional fee policy for them instead)
 // 2m for now
 //const MIN_CHAN_SIZE = 2.1e6
-const MIN_CHAN_SIZE = 1900e3
+const MIN_CHAN_SIZE = 1.9e6
 
 // multiplier for proportional safety ppm margin
 const SAFETY_MARGIN = 1.25
@@ -75,14 +74,14 @@ const NUDGE_DOWN = 0.0021
 // max hours since last successful routing out to allow increasing fee
 const HOURS_FOR_FEE_INCREASE = (MINUTES_BETWEEN_FEE_CHANGES * 1.5) / 60.0
 // min days of no routing activity before allowing reduction in fees
-const DAYS_FOR_FEE_REDUCTION = 3
+const DAYS_FOR_FEE_REDUCTION = 4.2
 
 // minimum ppm ever possible
 const MIN_PPM_ABSOLUTE = 0
-// any ppm above this is not considered for fees, rebalancing, or suggestions
+// max ppm ever possible for setting or using
 const MAX_PPM_ABSOLUTE = 799
 // smallest amount of sats necessary to consider a side not drained
-const MIN_SATS_PER_SIDE = 1000e3
+const MIN_SATS_PER_SIDE = 1e6
 
 // max minutes to spend per rebalance try
 const MINUTES_FOR_REBALANCE = 5
@@ -193,7 +192,7 @@ const runBotRebalanceOrganizer = async () => {
   // grab original number of peers for each side
   const [nRHP, nLHP] = [remoteHeavyPeers.length, localHeavyPeers.length]
 
-  /*
+  // /*
   // print out all options of peers & their weight
   if (VERBOSE) {
     console.log(`${getDate()} Peer weight / balance / alias.   Weight function: ${WEIGHT}`)
@@ -216,7 +215,7 @@ const runBotRebalanceOrganizer = async () => {
     }
     console.log('')
   }
-  */
+  // */
   
   // assemble list of matching peers and how much to rebalance
   const matchups = []
@@ -448,7 +447,7 @@ const runBotRebalanceOrganizer = async () => {
       })
       // more than 1 smily = huge discount
       const discount = floor(maxRebalanceRate / resBalance.fee_rate)
-      const yays = '😁'.repeat(min(5, discount))
+      const yays = '🍀'.repeat(min(5, discount))
       if (matchedPair.maxSatsToRebalance < MIN_SATS_OFF_BALANCE) {
         // successful & stopping - rebalanced "enough" as sats off-balance below minimum
         matchedPair.done = true
@@ -834,7 +833,7 @@ const updateFees = async () => {
     const by_channel_id = sizeMaxHTLC(peer)
     const byChannelPretty = Object.values(by_channel_id)
       .map(v => pretty(v.max_htlc_mtokens / 1000))
-      .join(', ')
+      .join('|')
 
     console.boring(
       `${getDate()} ${ca(peer.alias).padEnd(30)} < ${pretty(MIN_CHAN_SIZE)} ` +
@@ -944,13 +943,13 @@ const updateFees = async () => {
     const warnings = isVeryRemoteHeavy(peer) ? '💤-VRH' : ''
 
     // get the rest of channel policies figured out
-    const localSats = ((peer.outbound_liquidity / 1e6).toFixed(1) + 'M').padStart(5)
-    const remoteSats = ((peer.inbound_liquidity / 1e6).toFixed(1) + 'M').padEnd(5)
+    const localSats = ((peer.outbound_liquidity / 1e6).toFixed(1) + 'M').padStart(6)
+    const remoteSats = ((peer.inbound_liquidity / 1e6).toFixed(1) + 'M').padEnd(6)
     // max htlc sizes for this peers channels
     const by_channel_id = sizeMaxHTLC(peer)
     const byChannelPretty = Object.values(by_channel_id)
       .map(v => pretty(v.max_htlc_mtokens / 1000))
-      .join(', ')
+      .join('|')
 
     const outflowString = outflow ? `${pretty(outflow).padStart(10)} sats/day` : ''
     const ppmNewString = ('(' + ppmNew.toFixed(3)).padStart(10) + ')'
@@ -1626,7 +1625,8 @@ const generateSnapshots = async () => {
     const lastPpmChangeMinutes = lastPpmChange && ((Date.now() - (lastPpmChange.t || 0)) / (1000 * 60)).toFixed(0)
     const lastPpmChangeString =
       lastPpmChange && lastPpmChange.ppm_old
-        ? `last ∆ppm: ${lastPpmChange.ppm_old}->${lastPpmChange.ppm}ppm @ ${lastPpmChangeMinutes} minutes ago`
+        ? `last ∆ppm: ${lastPpmChange.ppm_old}->${lastPpmChange.ppm}ppm @ ` +
+        `${(lastPpmChangeMinutes / 60 / 24).toFixed(1)} days ago`
         : ''
 
     const lastRoutedIn = (Date.now() - p.routed_in_last_at) / (1000 * 60 * 60 * 24)
@@ -1797,7 +1797,8 @@ const runBotConnectionCheck = async ({ quiet = false } = {}) => {
     .lookup('google.com')
     .then(() => true)
     .catch(() => false)
-  console.log(`${getDate()} Connected to clearnet internet? ${isInternetConnected}`)
+  const strSign = isInternetConnected ? '✅' : '❌'
+  console.log(`${getDate()} Connected to clearnet internet? ${strSign}`)
 
   // keep trying until internet connects
   if (!isInternetConnected) {
