@@ -13,7 +13,8 @@ const MINUTES_FOR_SHELL_TIMEOUT = 15
 
 // handle resetting services by running the following
 // const COMMAND_TO_RUN = 'sudo ls -a'
-const COMMAND_TO_RUN = 'sudo /home/me/Umbrel/scripts/stop && sleep 10 && sudo /home/me/Umbrel/scripts/start'
+// const COMMAND_TO_RUN = 'sudo /home/me/Umbrel/scripts/stop && sleep 10 && sudo /home/me/Umbrel/scripts/start'
+const COMMAND_TO_RUN = 'sudo systemctl restart tor.service' // raspiblitz & custom installation
 
 // run in background with "sudo -b node resetHandler > /dev/null 2>&1 && sudo -k"
 // or in different terminal with "sudo node resetHandler > /dev/null 2>&1 && sudo -k"
