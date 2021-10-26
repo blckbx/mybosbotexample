@@ -9,18 +9,18 @@
 // ppm, routed, earned will be plotted in log scale, days in linear
 // roundDown=1 will round down to nearest sat as a way to remove sub-satoshi base fees
 // e.g.
-// http://192.168.1.247:7890/?daysForStats=7&xGroups=0&xAxis=ppm&yAxis=earned&rAxis=&out=&from=&roundDown=1&type=bubble
-// http://192.168.1.123:7890/?daysForStats=14&xAxis=ppm&yAxis=earned
-// http://192.168.1.123:7890/?daysForStats=14&xAxis=ppm&yAxis=earned&xGroups=10
-// http://192.168.1.123:7890/?daysForStats=14&xAxis=ppm&yAxis=earned&out=aci
-// http://192.168.1.123:7890/?daysForStats=14&xAxis=ppm&yAxis=earned&from=acinq
-// http://192.168.1.123:7890/?daysForStats=14&xAxis=days&yAxis=earned
-// http://192.168.1.123:7890/?daysForStats=14&xAxis=days&yAxis=earned&xGroups=10
-// http://192.168.1.123:7890/?daysForStats=90&xAxis=days&yAxis=earned&xGroups=10&type=line
-// http://192.168.1.123:7890/?daysForStats=30&xAxis=ppm&yAxis=earned&rAxis=count&xGroups=15
-// http://192.168.1.123:7890/?daysForStats=7&xAxis=ppm&yAxis=earned&rAxis=routed
-// http://192.168.1.123:7890/?daysForStats=7&xAxis=days&yAxis=earned&rAxis=count&xGroups=20
-// http://192.168.1.123:7890/?daysForStats=30&yAxis=count&xAxis=routed&xGroups=21&type=line
+// http://localhost:7890/?daysForStats=7&xGroups=0&xAxis=ppm&yAxis=earned&rAxis=&out=&from=&roundDown=1&type=bubble
+// http://localhost:7890/?daysForStats=14&xAxis=ppm&yAxis=earned
+// http://localhost:7890/?daysForStats=14&xAxis=ppm&yAxis=earned&xGroups=10
+// http://localhost:7890/?daysForStats=14&xAxis=ppm&yAxis=earned&out=aci
+// http://localhost:7890/?daysForStats=14&xAxis=ppm&yAxis=earned&from=acinq
+// http://localhost:7890/?daysForStats=14&xAxis=days&yAxis=earned
+// http://localhost:7890/?daysForStats=14&xAxis=days&yAxis=earned&xGroups=10
+// http://localhost:7890/?daysForStats=90&xAxis=days&yAxis=earned&xGroups=10&type=line
+// http://localhost:7890/?daysForStats=30&xAxis=ppm&yAxis=earned&rAxis=count&xGroups=15
+// http://localhost:7890/?daysForStats=7&xAxis=ppm&yAxis=earned&rAxis=routed
+// http://localhost:7890/?daysForStats=7&xAxis=days&yAxis=earned&rAxis=count&xGroups=20
+// http://localhost:7890/?daysForStats=30&yAxis=count&xAxis=routed&xGroups=21&type=line
 
 import bos from './bos.js'
 import fs from 'fs'
