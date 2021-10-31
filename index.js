@@ -3,6 +3,7 @@
 import fs from 'fs' // comes with nodejs, to read/write log files
 import dns from 'dns' // comes with nodejs, to check if there's internet access
 import bos from './bos.js' // my wrapper for bos, needs to be in same folder
+import htlcLimiter from './htlcLimiter.js' // can limit number of htlcs per channel
 
 const { min, max, trunc, floor, abs, random, sqrt, log2, pow, ceil, exp, PI } = Math
 
@@ -14,25 +15,31 @@ const ALLOW_BOS_RECONNECT = false
 const ADJUST_POLICIES = false
 // allow rebalancing
 const ALLOW_REBALANCING = false
-// allow automated Tor reset/restart:
-// create request file (resetRequest.json) for script with sudo permission at current timestamp
-// when it sees higher timestamp it will execute the action and erase the request file
-const ALLOW_TOR_RESET = false
+// let it create a file to request resetting node from another process / check resetHandler.js before activating this!
+const ALLOW_NODE_RESET = false
+// let it actively limit number of htlcs per channel
+const ALLOW_HTLC_LIMITER = false
 
 // time to sleep between trying a bot step again
-const MINUTES_BETWEEN_STEPS = 5
+const MINUTES_BETWEEN_STEPS = 10
+// print out acceptable/rejection of htlc requests
+const SHOW_HTLC_REQUESTS = true
+// show rebalancing printouts
+const SHOW_REBALANCE_LOG = false
 
 // minimum sats away from 0.5 balance to consider off-balance
 const MIN_SATS_OFF_BALANCE = 500e3
 // unbalanced sats below this can stop (bos rebalance requires >50k)
 const MIN_REBALANCE_SATS = 51e3
+// array of public key strings to avoid in paths (avoids from settings.json added to it too)
+const AVOID_LIST = []
 
 // limit of sats to balance per attempt
 // larger = faster rebalances, less for channels.db to store
 // smaller = can use smaller liquidity/channels for cheaper/easier rebalances
 // bos rebalance does probing + size up htlc strategy
 // (bos rebalance requires >50k)
-const MAX_REBALANCE_SATS = 212121
+const MAX_REBALANCE_SATS = 1e5
 
 // rebalance with faster keysends after bos rebalance works
 // (faster but higher risk of stuck sats so I send less)
@@ -40,22 +47,20 @@ const USE_KEYSENDS_AFTER_BALANCE = true
 // only use keysends (I use for testing)
 const ONLY_USE_KEYSENDS = false
 // sats to balance via keysends
-const MAX_REBALANCE_SATS_KEYSEND = 212121
+const MAX_REBALANCE_SATS_KEYSEND = 1e5
 
 // suspect might cause tor issues if too much bandwidth being used
 // setting to 1 makes it try just 1 rebalance at a time
-const MAX_PARALLEL_REBALANCES = 7
+const MAX_PARALLEL_REBALANCES = 5
 
 // would average in earned/routed out fee rate measured in DAYS_FOR_STATS
 // to determine what fee rate to use for rebalance
-// 0 earned fees & mostly remote sats = highest fee
 const INCLUDE_EARNED_FEE_RATE_FOR_REBALANCE = true
 
 // channels smaller than this not necessary to balance or adjust fees for
 // usually special cases anyway
 // (maybe use proportional fee policy for them instead)
 // 2m for now
-//const MIN_CHAN_SIZE = 2.1e6
 const MIN_CHAN_SIZE = 1.9e6
 
 // multiplier for proportional safety ppm margin
@@ -64,6 +69,8 @@ const SAFETY_MARGIN = 1.25
 const SAFETY_MARGIN_FLAT_MAX = 200
 // rebalancing fee rates below this aren't considered for rebalancing
 const MIN_FEE_RATE_FOR_REBALANCE = 1
+// max fee rate for rebalancing even if channel earns more
+const MAX_FEE_RATE_FOR_REBALANCE = 799
 
 // how often to update fees and max htlc sizes (keep high to minimize network gossip)
 const MINUTES_BETWEEN_FEE_CHANGES = 120
@@ -78,7 +85,7 @@ const DAYS_FOR_FEE_REDUCTION = 4.2
 
 // minimum ppm ever possible
 const MIN_PPM_ABSOLUTE = 0
-// max ppm ever possible for setting or using
+// max ppm ever possible for setting ppm to
 const MAX_PPM_ABSOLUTE = 799
 // smallest amount of sats necessary to consider a side not drained
 const MIN_SATS_PER_SIDE = 1e6
@@ -91,14 +98,14 @@ const MINUTES_FOR_KEYSEND = 5
 // number of times to retry a rebalance on probe timeout while
 // increasing fee for last hop to skip all depleted channels
 // Only applies on specifically ProbeTimeout so unsearched routes remain
-const RETRIES_ON_TIMEOUTS = 3
+const RETRIES_ON_TIMEOUTS = 1
 
 // time between retrying same good pair
 const MIN_MINUTES_BETWEEN_SAME_PAIR = (MINUTES_BETWEEN_STEPS + MINUTES_FOR_REBALANCE) * 2
 // max rebalance repeats while successful
 // if realized rebalance rate is > 1/2 max rebalance rate
 // this will just limit repeats when there's no major discounts
-const MAX_BALANCE_REPEATS = 10
+const MAX_BALANCE_REPEATS = 7
 
 // ms to put between each rebalance launch for safety
 const STAGGERED_LAUNCH_MS = 1111
@@ -147,7 +154,7 @@ const WEIGHT = WEIGHT_OPTIONS.NORMALIZED_UNBALANCE
 // const MIN_FLOWRATE_PER_DAY = 10000 // sats/day
 
 const SNAPSHOTS_PATH = './snapshots'
-const BALANCING_LOG_PATH = './peers'
+const PEERS_LOG_PATH = './peers'
 const LOG_FILES = './logs'
 const TIMERS_PATH = 'timers.json'
 const SETTINGS_PATH = 'settings.json'
@@ -155,7 +162,10 @@ const SETTINGS_PATH = 'settings.json'
 // global node info
 const mynode = {
   scriptStarted: Date.now(),
-  my_public_key: ''
+  my_public_key: '',
+  last_restart: Date.now(),
+  restart_failures: 0,
+  offline_limit: PEERS_OFFLINE_PERCENT_MAXIMUM
 }
 
 const runBot = async () => {
@@ -179,7 +189,6 @@ const runBot = async () => {
 
 // experimental parallel rebalancing function (unsplit, wip)
 const runBotRebalanceOrganizer = async () => {
-  if(!ALLOW_REBALANCING) return null
   console.boring(`${getDate()} runBotRebalanceOrganizer()`)
   // match up peers
   // high weight lets channels get to pick good peers first (not always to occasionally search for better matches)
@@ -274,7 +283,8 @@ const runBotRebalanceOrganizer = async () => {
         // fee via simple subtraction & division from reference
         subtractSafety(maxRebalanceRate)
       )
-    maxRebalanceRate = trunc(maxRebalanceRate)
+    // check against the absolute highest rebalance rate allowed
+    maxRebalanceRate = trunc(min(maxRebalanceRate, MAX_FEE_RATE_FOR_REBALANCE))
 
     // console.log(remoteHeavy.alias, { effectiveFeeRate, myOutgoingFee, maxRebalanceRate })
 
@@ -337,6 +347,9 @@ const runBotRebalanceOrganizer = async () => {
     console.log('')
   }
 
+    // if not actually rebalancing we end here
+    if (!ALLOW_REBALANCING) return null
+
   // to keep track of list of launched rebalancing tasks
 
   const rebalanceTasks = []
@@ -372,11 +385,12 @@ const runBotRebalanceOrganizer = async () => {
             maxSats: maxSatsToRebalanceAfterRules,
             maxMinutes: MINUTES_FOR_REBALANCE,
             maxFeeRate: maxRebalanceRate,
+            avoid: AVOID_LIST, // avoid these nodes in paths            
             retryAvoidsOnTimeout: RETRIES_ON_TIMEOUTS
           },
           undefined,
-          {} // show nothing, too many things happening
-          // { details: true }
+          // {} // no terminal output, too many things happening
+          { details: SHOW_REBALANCE_LOG }
         )
       : await bos.send(
           {
@@ -388,10 +402,11 @@ const runBotRebalanceOrganizer = async () => {
             sats: trunc(maxSatsToRebalanceAfterRules * (1 - 0.1 * random())),
             maxMinutes: MINUTES_FOR_KEYSEND,
             maxFeeRate: maxRebalanceRate,
-            isRebalance: true
+            retryAvoidsOnTimeout: RETRIES_ON_TIMEOUTS,
+            avoid: AVOID_LIST // avoid these nodes in paths
           },
-          {} // show nothing, too many things happening
-          // { details: true }
+          // {} // no terminal output, too many things happening
+          { details: SHOW_REBALANCE_LOG }
         )
     
     const taskLength = ((Date.now() - startedAt) / 1000 / 60).toFixed(1) + ' minutes'
@@ -415,7 +430,7 @@ const runBotRebalanceOrganizer = async () => {
           peer: remoteHeavy,
           newRebalance: {
             t: Date.now(),
-            ppm: maxRebalanceRate,
+            ppm: resBalance.ppmSuggested,
             failed: true,
             peer: localHeavy.public_key,
             peerAlias: localHeavy.alias,
@@ -448,7 +463,7 @@ const runBotRebalanceOrganizer = async () => {
       // more than 1 smily = huge discount
       const discount = floor(maxRebalanceRate / resBalance.fee_rate)
       const yays = '🍀'.repeat(min(5, discount))
-      if (matchedPair.maxSatsToRebalance < MIN_SATS_OFF_BALANCE) {
+      if (matchedPair.maxSatsToRebalance < MIN_REBALANCE_SATS) {
         // successful & stopping - rebalanced "enough" as sats off-balance below minimum
         matchedPair.done = true
         const tasksDone = matchups.reduce((count, m) => (m.done ? count + 1 : count), 0)
@@ -585,8 +600,8 @@ const runBotGetPeers = async ({ all = false } = {}) => {
     : await bos.peers()
 
     if (getPeers === null) {
-      // only happens in event of bos error
-      await resetTor()
+      // only happens in event of bos error like if lnd not running
+      await runBotReconnect()
       return await runBotGetPeers({ all })
     }
   
@@ -675,7 +690,11 @@ const includeForRemoteHeavyRebalance = p =>
   // or it's literally impossible since last hop costs more ppm already
   subtractSafety(p.fee_rate) > p.inbound_fee_rate &&
   // insufficient existing flow to remote side recently
-  !acceptableFlowToLocal(p)
+  !acceptableFlowToLocal(p) &&
+  // can't rebalance if inbound is disabled
+  !p.is_inbound_disabled &&
+  // check against any user set avoid rules
+  !AVOID_LIST.includes(p.public_key)
 
   /*
 // for testing what happened
@@ -703,7 +722,11 @@ const includeForLocalHeavyRebalance = p =>
   // only if no settings about it or if no setting for no local-heavy rebalance true
   !getRuleFromSettings({ alias: p.alias })?.no_local_rebalance &&
   // insufficient existing flow to local side recently
-  !acceptableFlowToRemote(p)
+  !acceptableFlowToRemote(p) &&
+  // no pending htlcs right now through this channel to avoid flooding my own channel
+  !p.is_forwarding &&
+  // check against any user set avoid rules
+  !AVOID_LIST.includes(p.public_key)
 
 // check settings for rules matching as substring of this alias
 const getRuleFromSettings = ({ alias }) => {
@@ -732,10 +755,10 @@ const runBotReconnectCheck = async () => {
   // check if too many peers are offline
   console.boring(`${getDate()} Online peers: ${peers.length} / ${allPeers.length}`)
 
-  if (1 - peers.length / allPeers.length > PEERS_OFFLINE_PERCENT_MAXIMUM / 100.0) {
-    // emergency reconnect - running reconnect early!
+  // if need emergency reconnect - running reconnect early!
+  if (1 - peers.length / allPeers.length > mynode.offline_limit / 100.0) {
     console.log(`${getDate()} too many peers offline. Running early reconnect.`)
-    await runBotConnectionCheck()
+    await runBotReconnect()
     // update timer
     fs.writeFileSync(
       TIMERS_PATH,
@@ -763,7 +786,7 @@ const runBotReconnectCheck = async () => {
   )
   if (isTimeForReconnect) {
     // check for internet / tor issues
-    await runBotConnectionCheck()
+    await runBotReconnect()
 
     // update timer
     fs.writeFileSync(
@@ -1043,7 +1066,7 @@ const updateFees = async () => {
 // keep peers separate to avoid rewriting entirety of data at once on ssd
 const appendRecord = ({ peer, newRecordData = {}, newRebalance = {} }, log = false) => {
   // filename uses 10 first digits of pubkey hex
-  const fullPath = BALANCING_LOG_PATH + '/' + peer.public_key.slice(0, 10) + '.json'
+  const fullPath = PEERS_LOG_PATH + '/' + peer.public_key.slice(0, 10) + '.json'
 
   // read from old file if exists
   let oldRecord = {}
@@ -1085,7 +1108,7 @@ const appendRecord = ({ peer, newRecordData = {}, newRebalance = {} }, log = fal
 }
 
 const readRecord = publicKey => {
-  const fullPath = BALANCING_LOG_PATH + '/' + publicKey.slice(0, 10) + '.json'
+  const fullPath = PEERS_LOG_PATH + '/' + publicKey.slice(0, 10) + '.json'
   let oldRecord = { rebalance: [] }
   try {
     if (fs.existsSync(fullPath)) {
@@ -1379,6 +1402,7 @@ const generateSnapshots = async () => {
         channel_age_days: channelAgeDays,
 
         base_fee_mtokens: +feeRates[id].base_fee_mtokens,
+        fee_rate: +feeRates[id].fee_rate,
         capacity: channelOnChainInfo[id].capacity,
         sent: channelOnChainInfo[id].sent,
         received: channelOnChainInfo[id].received,
@@ -1390,7 +1414,7 @@ const generateSnapshots = async () => {
         unsettled_balance: channelOnChainInfo[id].unsettled_balance,
 
         // bugged in bos call getChannels right now? max gives "huge numbers" or min gives "0"
-        local_max_pending_mtokens: +channelOnChainInfo[id].local_max_pending_mtokens,
+        local_max_pending_mtokens: +channelOnChainInfo[id].local_max_pending_mtokens, // this seems wrong
         remote_max_pending_mtokens: +channelOnChainInfo[id].remote_max_pending_mtokens,
         local_min_htlc_mtokens: +channelOnChainInfo[id].local_min_htlc_mtokens,
         remote_min_htlc_mtokens: +channelOnChainInfo[id].remote_min_htlc_mtokens,
@@ -1562,6 +1586,7 @@ const generateSnapshots = async () => {
     earned per peer stats:            ${statsEarnedPerPeer} sats
 
     % routed/local                    ${(totalRouted / totalLocalSats * 100).toFixed(0)} %
+    % net-profit/earned               ${(totalProfit / totalEarnedFromForwards * 100).toFixed(0)} %    
     avg earned/routed:                ${(totalEarnedFromForwards / totalRouted * 1e6).toFixed(0)} ppm
     avg net-profit/routed:            ${(totalProfit / totalRouted * 1e6).toFixed(0)} ppm
     avg earned/local:                 ${(totalEarnedFromForwards / totalLocalSats * 1e6).toFixed(0)} ppm
@@ -1789,8 +1814,8 @@ const addDetailsFromSnapshot = peers => {
 // 2. do bos reconnect
 // 3. get updated complete peer info
 // 4. peers offline high = reset tor & rerun entire check after delay
-const runBotConnectionCheck = async ({ quiet = false } = {}) => {
-  console.boring(`${getDate()} runBotConnectionCheck()`)
+const runBotReconnect = async ({ quiet = false } = {}) => {
+  console.boring(`${getDate()} runBotReconnect()`)
 
   // check for basic internet connection
   const isInternetConnected = await dns.promises
@@ -1803,69 +1828,75 @@ const runBotConnectionCheck = async ({ quiet = false } = {}) => {
   // keep trying until internet connects
   if (!isInternetConnected) {
     await sleep(2 * 60 * 1000)
-    return await runBotConnectionCheck()
+    return await runBotReconnect()
   }
 
   // run bos reconnect
-  if (ALLOW_BOS_RECONNECT) await bos.reconnect(true)
+  const res = ALLOW_BOS_RECONNECT ? await bos.reconnect(true) : {}
+  const offline = res?.offline || []
+  const reconnected = res?.reconnected || []
 
-  await sleep(1 * 60 * 1000, { msg: 'Small delay before checking online peers again' })
+  // await sleep(1 * 60 * 1000, { msg: 'Small delay before checking online peers again' })
 
-  const peers = await runBotGetPeers({ all: true })
+  const peers = await bos.peers({ is_active: undefined, is_public: undefined })
 
-  if (!peers || peers.length === 0) return console.warn('no peers')
+  if (peers.length === 0) return console.warn('no peers')
 
-  const peersOffline = peers.filter(p => p.is_offline)
+  const peersOffline = [...offline, ...reconnected] // peers.filter(p => p.is_offline)
+  const majorError = peers === null
 
   const peersTotal = peers.length
-  const message =
-    `🔌 Offline Statistics:
- ${peersOffline.length} / ${peersTotal} peers offline (${((peersOffline.length / peersTotal) * 100).toFixed(0)}%):
- ${peersOffline.map(p => p.alias).join(', ') || 'n/a'}
- (BoS reconnects every ${MINUTES_BETWEEN_RECONNECTS} minutes).`
+  const message = !majorError
+    ? `🔌 Offline Statistics:\n` +
+      ` ${peersOffline.length} / ${peersTotal} peers offline (${((peersOffline.length / peersTotal) * 100).toFixed(0)}%): ` +
+      ` ${peersOffline.map(p => p.alias).join(', ') || 'n/a'}\n` +
+      ` Reconnected: ${reconnected.map(p => p.alias).join(', ') || 'n/a'}\n` +
+      ` (BoS reconnects every ${MINUTES_BETWEEN_RECONNECTS} minutes).`
+    : 'BoS/LND issue detected'
 
   // update user about offline peers just in case
   console.log(`${getDate()} ${message}`)
   const { token, chat_id } = mynode.settings?.telegram || {}
   if (!quiet && token && chat_id) bos.sayWithTelegramBot({ token, chat_id, message })
 
-  // skip if set to not reset tor or unused
-  if (!ALLOW_TOR_RESET) return 0
-  // all good
-  if (peersOffline.length / peersTotal <= PEERS_OFFLINE_PERCENT_MAXIMUM / 100.0) return 0
+  // skip if set to not reset
+  if (!ALLOW_NODE_RESET) return 0
+  // if all good
+  if (!majorError && peersOffline.length / peersTotal <= mynode.offline_limit / 100.0) {
+    mynode.offline_limit = max(mynode.offline_limit - 1, PEERS_OFFLINE_PERCENT_MAXIMUM) // down to const
+    mynode.restart_failures = 0
+    return 0
+  }
 
-  await resetTor()
+  // restart node processes
+  mynode.last_restart = Date.now()
+  mynode.offline_limit = min(mynode.offline_limit + 1, 100) // up to 100%
+  await restartNodeProcess(mynode.restart_failures++)
 
-  console.log(`${getDate()} Tor seems to been reset, rechecking everything again`)
+  console.log(`${getDate()} checking everything again`)
   // process.exit(0)
 
   // recheck offline peers again
-  return runBotConnectionCheck()
+  return runBotReconnect()
 }
 
-const resetTor = async () => {
-  console.log(`${getDate()} Restarting tor...`)
+const restartNodeProcess = async restarts => {
+  console.log(`${getDate()} Restarting node process. Attempt #${restarts + 1}`)
 
-  // tor restarting shell command here or
-
-  // create request file for script with sudo permission at current timestamp
-  // when it sees higher timestamp it will execute the action and erase the request file
-  // and write result to resetDone.json file
-  const RESET_REQUEST_PATH = 'resetRequest.json' // create this file
-  const RESET_ACTION_PATH = 'resetDone.json' // after done outside handler will create this file
+  // create request file for script with sudo permission
+  // when it sees request file it will execute the action and erase the request file
+  const RESET_REQUEST_PATH = 'resetRequest.json' // create this file to reset node
   const requestTime = Date.now()
-  fs.writeFileSync(RESET_REQUEST_PATH, JSON.stringify({ id: requestTime }))
+  fs.writeFileSync(RESET_REQUEST_PATH, JSON.stringify({ requestTime }))
 
   // give it a LOT of time (could be lots of things updating)
-  await sleep(20 * 60 * 1000)
+  // double the time after each failure
+  const maxResetBackoff = 12 * 60 * 60 * 1000 // 12h
+  const minResetBackoff = 20 * 60 * 1000 // 20 min
+  await sleep(min(minResetBackoff * pow(2, restarts), maxResetBackoff))
 
   if (fs.existsSync(RESET_REQUEST_PATH)) {
-    console.log(`${getDate()} Tor reset did not happen, request file still there. no resetHandler script running?`)
-    process.exit(1)
-  }
-  const res = JSON.parse(fs.readFileSync(RESET_ACTION_PATH))
-  if (res.id !== requestTime) {
-    console.log(`${getDate()} Tor reset failed, request read but no updated action file found`)
+    console.log(`${getDate()} reset did not happen, request file still there. no resetHandler script running?`)
     process.exit(1)
   }
 
@@ -1904,7 +1935,7 @@ const initialize = async () => {
       (if routed-out last ${HOURS_FOR_FEE_INCREASE.toFixed(1)} hours)
 
       down: ${maxDownFeeChangePerDay.toFixed(1)} %
-        (if no routing-out for ${DAYS_FOR_FEE_REDUCTION} days)
+        (if no routing-out for ${DAYS_FOR_FEE_REDUCTION.toFixed(1)} days)
 
 
     IF THIS IS INCORRECT, ctrl + c
@@ -1913,8 +1944,8 @@ const initialize = async () => {
   `)
 
   // make folders for all the files I use
-  if (!fs.existsSync(BALANCING_LOG_PATH)) {
-    fs.mkdirSync(BALANCING_LOG_PATH, { recursive: true })
+  if (!fs.existsSync(PEERS_LOG_PATH)) {
+    fs.mkdirSync(PEERS_LOG_PATH, { recursive: true })
   }
   if (!fs.existsSync(SNAPSHOTS_PATH)) {
     fs.mkdirSync(SNAPSHOTS_PATH, { recursive: true })
@@ -1926,6 +1957,14 @@ const initialize = async () => {
   // load settings file
   if (fs.existsSync(SETTINGS_PATH)) {
     mynode.settings = JSON.parse(fs.readFileSync(SETTINGS_PATH))
+
+    // add to avoid list from there
+    if (mynode.settings?.avoid?.length) {
+      mynode.settings.avoid.forEach(pk => {
+        if (!pk.startsWith('//')) AVOID_LIST.push(pk)
+      })
+      console.log(`${getDate()}`, { AVOID_LIST })
+    }
   }
 
   // generate timers file if there's not one
@@ -1939,8 +1978,10 @@ const initialize = async () => {
     )
   }
 
-  // generate snapshots at start for easy access to data
+  // generate snapshots at start to ensure recent data
   await generateSnapshots()
+
+  if (ALLOW_HTLC_LIMITER) htlcLimiter({ showLogs: SHOW_HTLC_REQUESTS })
 
   await sleep(5 * 1000)
 
