@@ -11,7 +11,11 @@ Bosbot tries to balance imbalanced channels close to 1:1. Imbalance is detected 
 
 **Fee adjustment / HTLC sizes:**
 
-Bosbot is setting channel fees based on activity per hours/days or manually if defined in settings.json. Fees are adjusted faster upwards than downwards. Best practice: For a new channel set fees initially high and let it drop (Bosbot) until forwards happen. Initial fees have to be set by LND favourably (lnd.conf, bitcoin section). Edge cases can be set in settings.json, e.g. no rebalancing to remote side for draining-only channels (like LN exchanges). Furthermore Bosbot is setting max htlc sizes for each channel to reduce channel failures on forwards. 
+Bosbot is setting channel fees based on activity per hours/days or manually if defined in settings.json. Fees are adjusted faster upwards than downwards. Best practice: For a new channel set fees initially high and let it drop (Bosbot) until forwards happen. Initial fees have to be set by LND favourably (lnd.conf, bitcoin section). Edge cases can be set in settings.json, e.g. no rebalancing to remote side for draining-only channels (like LN exchanges). Furthermore Bosbot is setting max htlc sizes for each channel to reduce channel failures on forwards.
+
+**HTLC Limiter:**
+
+Bosbot now adds a module to watch and limit numbers of pending htlcs per channel based on fee policies. In parallel it watches for forwarding requests, calculates the htlc's fee and adds it to a fee range (2^X). If the number of pending htlcs within a given fee range exceeds the limit, it gets rejected. For now there're more htlcs allowed for outgoing than incoming direction. It also acts as a rate limiter for htlcs.
 
 **Usage:**
 
@@ -21,7 +25,11 @@ Edit index.js to your needs. At the top of the script set which `MANAGEMENT SWIT
 
 `ADJUST_POLICIES`: bosbot is permitted to adjust outgoing fees and max htlc sizes of your channels
 
-`DO_REBALANCING`: bosbot rebalances channels which are depleted to local or remote side (500_000 sats off balance with channel size above 2M)
+`ALLOW_REBALANCING`: bosbot rebalances channels which are depleted to local or remote side (500_000 sats off balance with channel size above 2M)
+
+`ALLOW_NODE_RESET`: experimental feature trying to reset services if too many peers seem to be offline (reset Tor or restart node)
+
+`ALLOW_HTLC_LIMITER`: enables or disables module htlcLimiter
 
 **Useful settings:**
 
@@ -29,26 +37,28 @@ Edit index.js to your needs. At the top of the script set which `MANAGEMENT SWIT
 
 `MAX_PPM_ABSOLUTE`: maximum fees
 
-`MAX_PARALLEL_REBALANCES`: maximum number of parallel rebalances
-
-`MINUTES_BETWEEN_FEE_CHANGES`: period of time to adjust fees and htlc sizes (forwards may fail if changed too often due to gossip delay)
-
 **Workflow:**
+
 1) runBotReconnectCheck()
 2) runUpdateFeesCheck()
 3) runBotRebalanceOrganizer()
 4) runBot() // repeat every x minutes (`MINUTES_BETWEEN_STEPS`)
 
 **Fine-Tuning:**
+
 1) Setup Telegram Bot: Edit settings.json to your needs. Add HTTP API Token (set by BotFather) and chat id (lookup "/id" on Telegram).
 2) Set rules for channels (see settings.json.example): aliasMatch, min_ppm, max_ppm, no_local_rebalance, no_remote_balance, max_htlc_sats
+
+**Summary:**
+
+Run `node lndsummary` to gather useful data based on your node's statistics (balances, fees, weekly stats for profits and forwards)
 
 **Visualization:**
 
 Run `node visualize` to start up a webpage hosted at http://localhost:7890 or http://(your-local-address):7890  
   
 **Nodes in Path:**
-  
+
 Running `node nodes_in_path` shows most used nodes in past rebalances. Switches `DAYS_FOR_STATS` (how many days to look back) and `SHOW_PEERS` (show already connected peers) are adjustable. For this script to run a database is needed (run index.js at least once).
 
 ___________________________________________________________
