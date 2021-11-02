@@ -1,3 +1,21 @@
+/*
+
+Limits # of htlcs in each channel
+
+Script periodically checks pending htlcs in channels and fee policy in channels.
+
+In parallel it watches for forwarding requests.
+It gets fee from either forwarding request or getChannels response & calculates it via policies.
+It then gets which power of 2 range fee is.
+It looks at how many pending htlcs are already in this fee range in request's incoming & outgoing channels
+If # of htlcs for incoming channel is below some number (e.g. 2)
+and if # of htlcs for outgoing channel is below some number (e.g. 4)
+it grants the request, otherwise rejects
+
+The rate of getChannels updates is rate at which granted request counts are cleared, so also acts as rate limiter.
+
+*/
+
 import { subscribeToForwardRequests } from 'balanceofsatoshis/node_modules/ln-service/index.js'
 import lnd from 'balanceofsatoshis/lnd/index.js'
 import bos from './bos.js'
@@ -12,6 +30,9 @@ const MIN_ORDER_OF_MAGNITUDE = 0 // lowest group possible
 
 const byChannel = {}
 const node = { policies: {} }
+let pendingPaymentCount = 0
+let pendingForwardCount = 0
+let lastPolicyCheck = 0
 
 // get order of magnitude group number from sats
 // pow of 2 better for fees which have smaller range than good for pow of 10
@@ -26,6 +47,20 @@ const getFee = f => {
     return fee_rate * 1e-6 * f.tokens + base_fee
   }
   return 0
+}
+
+// starts everything
+const initialize = async ({ showLogs = true } = {}) => {
+  const authed = await mylnd()
+  const subForwardRequests = subscribeToForwardRequests({ lnd: authed })
+
+  subForwardRequests.on('forward_request', f => {
+    const allowed = decideOnForward({ f })
+    showLogs && say(f, allowed)
+  })
+
+  updatePendingCounts({ subForwardRequests, showLogs })
+  mention(`${getDate()} htlcLimiter() initialized`)
 }
 
 // decide to allow or block forward request
@@ -43,6 +78,8 @@ const decideOnForward = ({ f }) => {
 
   if (allowed) {
     f.accept()
+    if (!byChannel[f.in_channel]) byChannel[f.in_channel] = {}
+    if (!byChannel[f.out_channel]) byChannel[f.out_channel] = {}
     byChannel[f.in_channel][group] = inboundPending + 1
     byChannel[f.out_channel][group] = outboundPending + 1
     pendingForwardCount += 2
@@ -51,23 +88,6 @@ const decideOnForward = ({ f }) => {
   }
 
   return allowed
-}
-
-let pendingPaymentCount = 0
-let pendingForwardCount = 0
-let lastPolicyCheck = 0
-
-const initialize = async ({ showLogs = true } = {}) => {
-  const authed = await mylnd()
-  const subForwardRequests = subscribeToForwardRequests({ lnd: authed })
-
-  subForwardRequests.on('forward_request', f => {
-    const allowed = decideOnForward({ f })
-    showLogs && say(f, allowed)
-  })
-
-  updatePendingCounts({ subForwardRequests, showLogs })
-  mention(`${getDate()} htlcLimiter() initialized`)
 }
 
 const updatePendingCounts = async ({ subForwardRequests, showLogs }) => {
@@ -133,4 +153,4 @@ const getDate = timestamp => (timestamp ? new Date(timestamp) : new Date()).toIS
 const mention = (...args) => console.log(`\x1b[2m${args.join(' ')}\x1b[0m`)
 
 export default initialize // uncomment this to import
-//initialize() // OR uncomment this to run from terminal
+// initialize() // OR uncomment this to run from terminal
