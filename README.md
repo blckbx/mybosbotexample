@@ -31,7 +31,7 @@ Edit index.js to your needs. At the top of the script set which `MANAGEMENT SWIT
 
 `ALLOW_HTLC_LIMITER`: enables or disables module htlcLimiter
 
-**Useful settings:**
+**Adjust settings:**
 
 `MIN_PPM_ABSOLUTE`: minimum fees
 
