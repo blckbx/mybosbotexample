@@ -1,7 +1,7 @@
 // needs visualize.js and bos.js, the wrapper, in same folder
 // run with: npm link balanceofsatoshis && node visualize
 // makes webpage visual available on local machine at e.g. http://localhost:7890
-// and local network at e.g. http://localhost:7890
+// and local network at e.g. http://192.168.1.123:7890
 // umbrel shortcut for local address also works with port specified, e.g.: http://umbrel.local:7890
 // then just need to open the page and set settings with query string
 // xAxis, yAxis, and rAxis can be set to days', ppm, routed, earned, count (for grouped)
