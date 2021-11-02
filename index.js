@@ -1,4 +1,5 @@
 // NOT SAFE TO RUN
+I KNOW WHAT I AM DOING
 
 import fs from 'fs' // comes with nodejs, to read/write log files
 import dns from 'dns' // comes with nodejs, to check if there's internet access
