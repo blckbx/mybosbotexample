@@ -59,7 +59,7 @@ Run `node visualize` to start up a webpage hosted at http://localhost:7890 or ht
   
 **Nodes in Path:**
 
-Running `node nodes_in_path` shows most used nodes in past rebalances. Switches `DAYS_FOR_STATS` (how many days to look back) and `SHOW_PEERS` (show already connected peers) are adjustable. For this script to run a database is needed (run index.js at least once).
+Running `node nodes_in_path` shows most used nodes in past rebalances. Switches `DAYS_FOR_STATS` (how many days to look back) and `SHOW_PEERS` (show already connected peers) are adjustable. For this script to run some data is needed (run index.js at least once, turn off any management switches).
 
 ___________________________________________________________
 just meant as an example of how wrapping of bos (balanceofsatoshis) can be done in node
