@@ -3,16 +3,16 @@
 // just the generate summary snapshots part of my script that just reads lnd data and makes summary text files
 
 import fs from 'fs' // comes with nodejs, to read/write log files
-import bos from './bos.js' // my wrapper for bos, needs to be in same folder
+import bos from '../bos.js' // my wrapper for bos, needs to be in same folder
 const { max, floor, abs, ceil, trunc } = Math
 
 // change this to change number of days summary is for
 const DAYS_FOR_STATS = 7
 
 // where to put random tables
-const LOG_FILES = './logs'
-const PEERS_LOG_PATH = './peers'
-const SNAPSHOTS_PATH = './snapshots'
+const LOG_FILES = '../logs'
+const PEERS_LOG_PATH = '../peers'
+const SNAPSHOTS_PATH = '../snapshots'
 
 // generate data to save to files for easier external browsing
 // returns peers info with maximum detail (content of _peers.json)

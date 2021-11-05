@@ -1,10 +1,7 @@
-// quick data lookup on a peer: channel data, node features, ppm history
-// example usage: node lookup ACINQ
-
 import fs from 'fs'
 
-const BALANCING_LOG_PATH = './peers'
-const SNAPSHOTS_PATH = './snapshots'
+const BALANCING_LOG_PATH = '../peers'
+const SNAPSHOTS_PATH = '../snapshots'
 
 // e.g. "node lookup aci" ->
 // pull data from peer logs & peers snapshot for ACINQ

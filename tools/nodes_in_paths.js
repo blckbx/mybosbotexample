@@ -1,13 +1,9 @@
-// lookup most used nodes in historic rebalancing paths
-// example usage: node node_in_paths
-// settings: DAYS_FOR_STATS = number of days to look back, SHOW_PEERS = include already connected peers
-
 import fs from 'fs'
-import bos from './bos.js'
+import bos from '../bos.js'
 
-const LOG_FILES = './logs'
+const LOG_FILES = '../logs'
 const DAYS_FOR_STATS = 60
-const SNAPSHOTS_PATH = './snapshots'
+const SNAPSHOTS_PATH = '../snapshots'
 const SHOW_PEERS = true
 
 const initialize = async () => {

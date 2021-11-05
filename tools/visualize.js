@@ -23,7 +23,7 @@
 // http://localhost:7890/?daysForStats=7&xAxis=days&yAxis=earned&rAxis=count&xGroups=20
 // http://localhost:7890/?daysForStats=30&yAxis=count&xAxis=routed&xGroups=21&type=line
 
-import bos from './bos.js'
+import bos from '../bos.js'
 import fs from 'fs'
 import os from 'os'
 
