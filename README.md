@@ -51,6 +51,8 @@ Edit `index.js` to your needs. At the top of the script set which `MANAGEMENT SW
 1) Setup Telegram Bot: Edit settings.json to your needs. Add HTTP API Token (set by BotFather) and chat id (lookup "/id" on Telegram).
 2) Set rules for channels (see settings.json.example): aliasMatch, min_ppm, max_ppm, no_local_rebalance, no_remote_balance, max_htlc_sats
 
+**/TOOLS/**
+
 **Summary:**
 
 Run `node lndsummary` to gather useful data based on your node's statistics (balances, fees, weekly stats for profits and forwards)
@@ -62,6 +64,10 @@ Run `node visualize` to start up a webpage hosted at http://localhost:7890 or ht
 **Nodes in Path:**
 
 Running `node nodes_in_path` shows most used nodes in past rebalances. Switches `DAYS_FOR_STATS` (how many days to look back) and `SHOW_PEERS` (show already connected peers) are adjustable. For this script to run some data is needed (run index.js at least once, turn off any management switches).
+
+**Lookup:**
+
+Running `node lookup <alias>` fetches and displays data on a specific alias.
 
 ___________________________________________________________
 just meant as an example of how wrapping of bos (balanceofsatoshis) can be done in node
