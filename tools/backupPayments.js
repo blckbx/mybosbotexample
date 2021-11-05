@@ -1,7 +1,7 @@
 import fs from 'fs'
-import bos from './bos.js'
+import bos from '../bos.js'
 
-const LOG_FILES = './logs'
+const LOG_FILES = '../logs'
 const DAYS_FOR_STATS = 999 // lose any days not backed up
 
 const initialize = async () => {
