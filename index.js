@@ -14,7 +14,7 @@ const ALLOW_BOS_RECONNECT = false
 // allow actually adjusting fees and max htlc sizes and updating peer records
 // if false it will just print out what would've been to terminal & _feeChanges.txt
 const ADJUST_POLICIES = false // set max htlc & fees
-const ADJUST_FEES = false // = false : set only max htlcs
+const ADJUST_POLICIES_FEES = false // = false : set only max htlcs (subset of ALLOW_POLICIES: true)
 // allow rebalancing (false = dryrun)
 const ALLOW_REBALANCING = false
 // let it create a file to request resetting node from another process to fix connections (by creating a file)
@@ -872,8 +872,8 @@ const updateFees = async () => {
       p.totalSats > MIN_CHAN_SIZE
   )
 
-  // ADJUST_FEES = false: adjust only htlc size
-  if(!ADJUST_FEES) {
+  // ADJUST_POLICIES_FEES = false: only adjust max htlc sizes
+  if(!ADJUST_POLICIES_FEES) {
     for (const peer of peers) {
       const by_channel_id = sizeMaxHTLC(peer)
       const byChannelPretty = Object.values(by_channel_id)
