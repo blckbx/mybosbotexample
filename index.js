@@ -8,7 +8,7 @@ import htlcLimiter from './htlcLimiter.js' // can limit number of htlcs per chan
 
 const { min, max, trunc, floor, abs, random, sqrt, log2, pow, ceil, exp, PI } = Math
 
-// MANAGEMENT SWITCHES
+// #MANAGEMENT SWITCHES#
 // allow BOS reconnect
 const ALLOW_BOS_RECONNECT = false
 // allow actually adjusting fees and max htlc sizes and updating peer records
@@ -21,6 +21,7 @@ const ALLOW_REBALANCING = false
 const ALLOW_NODE_RESET = false
 // let it actively limit number of htlcs per channel
 const ALLOW_HTLC_LIMITER = false
+// #####################
 
 // time to sleep between trying a bot step again
 const MINUTES_BETWEEN_STEPS = 5
