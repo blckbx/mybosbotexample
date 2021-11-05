@@ -25,6 +25,8 @@ Edit `index.js` to your needs. At the top of the script set which `MANAGEMENT SW
 
 `ADJUST_POLICIES`: bosbot is permitted to adjust outgoing fees and max htlc sizes of your channels
 
+`ADJUST_FEES` : if false this restricts policy management (setting htlc sizes/fees) to htlc management only
+
 `ALLOW_REBALANCING`: bosbot rebalances channels which are depleted to local or remote side (500_000 sats off balance with channel size above 2M)
 
 `ALLOW_NODE_RESET`: experimental feature trying to reset services if too many peers seem to be offline (reset Tor or restart node)
