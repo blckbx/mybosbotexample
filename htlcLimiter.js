@@ -134,8 +134,8 @@ const updatePendingCounts = async ({ subForwardRequests, showLogs }) => {
 
 const say = (f, isAccepted) =>
   mention(
-    `${getDate()} HTLC Limiter: `,
-    isAccepted ? '✅ accepted new htlc' : '❌ rejected new htlc',
+    `${getDate()} HTLC: `,
+    isAccepted ? '✅' : '❌',
     `${getSats(f)}`.padStart(10),
     ' amt, ',
     `${getFee(f).toFixed(3)}`.padStart(9),
