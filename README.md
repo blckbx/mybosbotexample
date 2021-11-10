@@ -49,7 +49,7 @@ Edit `index.js` to your needs. At the top of the script set which `MANAGEMENT SW
 **Fine-Tuning:**
 
 1) Setup Telegram Bot: Edit settings.json to your needs. Add HTTP API Token (set by BotFather) and chat id (lookup "/id" on Telegram).
-2) Set rules for channels (see settings.json.example): aliasMatch, min_ppm, max_ppm, no_local_rebalance, no_remote_balance, max_htlc_sats
+2) Set rules for channels (see settings.json.example): aliasMatch, min_ppm, max_ppm, no_local_rebalance, no_remote_balance, max_htlc_sats, AVOID_LIST (nodes to exclude from fee management)
 
 
 
