@@ -62,7 +62,7 @@ Run `node lndsummary` to gather useful data based on your node's statistics (bal
 
 **Visualization:**
 
-Run `node visualize` to start up a webpage hosted at http://localhost:7890 or http://(your-local-address):7890  
+Run `node visualize` to start up a webservice hosted at http://localhost:7890 or http://(your-local-address/ip):7890  
   
 **Nodes in Path:**
 
@@ -70,7 +70,7 @@ Running `node nodes_in_path` shows most used nodes in past rebalances. Switches 
 
 **Lookup:**
 
-Running `node lookup <alias>` fetches and displays data on a specific alias.
+Running `node lookup <alias>` displays data on a specific alias.
 
 ___________________________________________________________
 just meant as an example of how wrapping of bos (balanceofsatoshis) can be done in node
