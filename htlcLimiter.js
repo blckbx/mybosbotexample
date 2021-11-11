@@ -153,5 +153,5 @@ const sleep = async ms => await new Promise(resolve => setTimeout(resolve, ms))
 const getDate = timestamp => (timestamp ? new Date(timestamp) : new Date()).toISOString()
 const mention = (...args) => console.log(`\x1b[2m${args.join(' ')}\x1b[0m`)
 
-export default initialize // uncomment this to import
-// initialize() // OR uncomment this to run from terminal
+// export default initialize // uncomment this to import
+initialize() // OR uncomment this to run from terminal
