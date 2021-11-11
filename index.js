@@ -4,7 +4,6 @@ I KNOW WHAT I AM DOING
 import fs from 'fs' // comes with nodejs, to read/write log files
 import dns from 'dns' // comes with nodejs, to check if there's internet access
 import bos from './bos.js' // my wrapper for bos, needs to be in same folder
-// import htlcLimiter from './htlcLimiter.js' // can limit number of htlcs per channel - use htlcLimiter separately
 
 const { min, max, trunc, floor, abs, random, sqrt, log2, pow, ceil, exp, PI } = Math
 
@@ -19,14 +18,10 @@ const ADJUST_POLICIES_FEES = false // = false : set only max htlcs (subset of AL
 const ALLOW_REBALANCING = false
 // let it create a file to request resetting node from another process to fix connections (by creating a file)
 const ALLOW_NODE_RESET = false
-// let it actively limit number of htlcs per channel
-// const ALLOW_HTLC_LIMITER = false // use htlcLimiter separately
 // #####################
 
 // time to sleep between trying a bot step again
 const MINUTES_BETWEEN_STEPS = 5
-// print out acceptable/rejection of htlc requests
-// const SHOW_HTLC_REQUESTS = true
 // show rebalancing printouts (very verbose routing info (BoS output))
 const SHOW_REBALANCE_LOG = false
 
@@ -2015,9 +2010,6 @@ const initialize = async () => {
   await generateSnapshots()
 
   await sleep(5 * 1000)
-
-  // forwarding reuqest limiter - run it separately
-  // if (ALLOW_HTLC_LIMITER) htlcLimiter({ showLogs: SHOW_HTLC_REQUESTS })
 
   // start bot loop
   runBot()
