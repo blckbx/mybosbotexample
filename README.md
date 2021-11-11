@@ -13,9 +13,6 @@ Bosbot tries to balance imbalanced channels close to 1:1. Imbalance is detected 
 
 Bosbot is setting channel fees based on activity per hours/days or manually if defined in settings.json. Fees are adjusted faster upwards than downwards. Best practice: For a new channel set fees initially high and let it drop (Bosbot) until forwards happen. Initial fees have to be set by LND favourably (lnd.conf, bitcoin section). Edge cases can be set in settings.json, e.g. no rebalancing to remote side for draining-only channels (like LN exchanges). Furthermore Bosbot is setting max htlc sizes for each channel to reduce channel failures on forwards.
 
-**HTLC Limiter (currently not recommended due to memory leakage):**
-
-Bosbot now adds a module to watch and limit numbers of pending htlcs per channel based on fee policies. In parallel it watches for forwarding requests, calculates the htlc's fee and adds it to a fee range (currently 2^X). If the number of pending htlcs within a given fee range exceeds the limit, the forward is rejected. For now there're more htlcs allowed for outgoing than incoming direction. Also it acts as a rate limiter for htlcs. We discovered memory leakage during testing this module, so we don't recommend running HTLC Limiter in this state. 
 
 **Usage:**
 
@@ -67,6 +64,10 @@ Run `node visualize` to start up a webservice hosted at http://localhost:7890 or
 **Nodes in Path:**
 
 Running `node nodes_in_path` shows most used nodes in past rebalances. Switches `DAYS_FOR_STATS` (how many days to look back) and `SHOW_PEERS` (show already connected peers) are adjustable. For this script to run some data is needed (run index.js at least once, turn off any management switches).
+
+**HTLC Limiter (currently not recommended due to memory leakage):**
+
+A module to watch and limit numbers of pending htlcs per channel based on fee policies. In parallel it watches for forwarding requests, calculates the htlc's fee and adds it to a fee range (currently 2^X). If the number of pending htlcs within a given fee range exceeds the limit, the forward is rejected. For now there're more htlcs allowed for outgoing than incoming direction. Also it acts as a rate limiter for htlcs. We discovered memory leakage during testing this module, so we don't recommend running HTLC Limiter in this state. If you still want to use it, run htlcLimiter as separate process: `node htlcLimiter`
 
 **Lookup:**
 
