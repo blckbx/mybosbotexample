@@ -18,7 +18,7 @@ The rate of getChannels updates is rate at which granted request counts are clea
 
 import { subscribeToForwardRequests } from 'balanceofsatoshis/node_modules/ln-service/index.js'
 import lnd from 'balanceofsatoshis/lnd/index.js'
-import bos from './bos.js'
+import bos from '../bos.js'
 const { log2, floor, max } = Math
 
 const mylnd = async () => (await lnd.authenticatedLnd({})).lnd
