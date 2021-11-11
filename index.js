@@ -26,7 +26,7 @@ const ALLOW_NODE_RESET = false
 // time to sleep between trying a bot step again
 const MINUTES_BETWEEN_STEPS = 5
 // print out acceptable/rejection of htlc requests
-const SHOW_HTLC_REQUESTS = true
+// const SHOW_HTLC_REQUESTS = true
 // show rebalancing printouts (very verbose routing info (BoS output))
 const SHOW_REBALANCE_LOG = false
 
