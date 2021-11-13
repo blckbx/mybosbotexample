@@ -1,4 +1,5 @@
 // NOT SAFE TO RUN
+I KNOW WHAT I AM DOING
 
 import fs from 'fs' // comes with nodejs, to read/write log files
 import dns from 'dns' // comes with nodejs, to check if there's internet access
@@ -8,13 +9,13 @@ const { min, max, trunc, floor, abs, random, log2, pow, ceil, exp, PI } = Math
 
 // #MANAGEMENT SWITCHES#
 // allow BOS reconnect
-const ALLOW_BOS_RECONNECT = true
+const ALLOW_BOS_RECONNECT = false
 // allow actually adjusting fees and max htlc sizes and updating peer records
 // if false it will just print out what would've been to terminal & _feeChanges.txt
-const ADJUST_POLICIES = true // set max htlc & fees
+const ADJUST_POLICIES = false // set max htlc & fees
 const ADJUST_POLICIES_FEES = false // = false : set only max htlcs (subset of ALLOW_POLICIES: true)
 // allow rebalancing (false = dryrun)
-const ALLOW_REBALANCING = true
+const ALLOW_REBALANCING = false
 // let it create a file to request resetting node from another process to fix connections (by creating a file for resetHandler.js to see)
 const ALLOW_NODE_RESET = false
 // backup payments in jsons & then remove from database for speed
