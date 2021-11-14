@@ -13,6 +13,10 @@ Bosbot tries to balance imbalanced channels close to 1:1. Imbalance is detected 
 
 Bosbot is setting channel fees based on activity per hours/days or manually if defined in settings.json. Fees are adjusted faster upwards than downwards. Best practice: For a new channel set fees initially high and let it drop (Bosbot) until forwards happen. Initial fees have to be set by LND favourably (lnd.conf, bitcoin section). Edge cases can be set in settings.json, e.g. no rebalancing to remote side for draining-only channels (like LN exchanges). Furthermore Bosbot is setting max htlc sizes for each channel to reduce channel failures on forwards.
 
+**HTLC Limiter:**
+
+A module to watch and limit numbers of pending htlcs per channel based on fee policies. In parallel it watches for forwarding requests, calculates the htlc's fee and adds it to a fee range (currently 2^X). If the number of pending htlcs within a given fee range exceeds the limit, the forward is rejected. For now there're more htlcs allowed for outgoing than incoming direction. Also it acts as a rate limiter for htlcs. Module is started in a separate process by `npm run start-limiter`
+
 **Backup Payments:**
 
 To clean and speed up LND, backing up and removing payments from channel.db to external files (json) is a way to do so. Backup files are saved into `\logs\` directory and read on startup.
@@ -26,7 +30,7 @@ Edit `index.js` to your needs. At the top of the script set which `MANAGEMENT SW
 
 `ADJUST_POLICIES`: bosbot is permitted to adjust outgoing fees and max htlc sizes of your channels
 
-`ADJUST_POLICIES_FEES` : if false this restricts policy management (setting htlc sizes/fees) to htlc management only
+`ADJUST_POLICIES_FEES` : if false this restricts policy management (setting htlc sizes/fees) to htlc size management only
 
 `ALLOW_REBALANCING`: bosbot rebalances channels which are depleted to local or remote side (500_000 sats off balance with channel size above 2M)
 
@@ -46,6 +50,8 @@ Edit `index.js` to your needs. At the top of the script set which `MANAGEMENT SW
 
 `MAX_PPM_ABSOLUTE`: maximum fees
 
+`ROUTING_STOPPING_FEE_RATE`: stop fees for drained channels
+
 **Workflow:**
 
 1) runBotReconnectCheck()
@@ -58,7 +64,6 @@ Edit `index.js` to your needs. At the top of the script set which `MANAGEMENT SW
 
 1) Setup Telegram Bot: Edit settings.json to your needs. Add HTTP API Token (set by BotFather) and chat id (lookup "/id" on Telegram).
 2) Set rules for channels (see settings.json.example): aliasMatch, min_ppm, max_ppm, no_local_rebalance, no_remote_balance, max_htlc_sats, AVOID_LIST (nodes to exclude from rebalancing (even in-path))
-
 
 
 
@@ -75,10 +80,6 @@ Run `node visualize` to start up a webservice hosted at http://localhost:7890 or
 **Nodes in Path:**
 
 Running `node nodes_in_path` shows most used nodes in past rebalances. Switches `DAYS_FOR_STATS` (how many days to look back) and `SHOW_PEERS` (show already connected peers) are adjustable. For this script to run some data is needed (run index.js at least once, turn off any management switches).
-
-**HTLC Limiter:**
-
-A module to watch and limit numbers of pending htlcs per channel based on fee policies. In parallel it watches for forwarding requests, calculates the htlc's fee and adds it to a fee range (currently 2^X). If the number of pending htlcs within a given fee range exceeds the limit, the forward is rejected. For now there're more htlcs allowed for outgoing than incoming direction. Also it acts as a rate limiter for htlcs.
 
 **Lookup:**
 
