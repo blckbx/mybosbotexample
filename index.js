@@ -91,7 +91,7 @@ const MIN_FEE_RATE_FOR_REBALANCE = 1
 // max fee rate for rebalancing even if channel earns more
 const MAX_FEE_RATE_FOR_REBALANCE = 799
 // fee rate to stop forwards out of drained channel
-const ROUTING_STOPPING_FEE_RATE = 799
+const ROUTING_STOPPING_FEE_RATE = 999
 
 // max minutes to spend per rebalance try
 const MINUTES_FOR_REBALANCE = 7
