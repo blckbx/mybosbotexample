@@ -61,7 +61,7 @@ const INCLUDE_EARNED_FEE_RATE_FOR_REBALANCE = true
 // channels smaller than this not necessary to balance or adjust fees for
 // usually special cases anyway
 // (maybe use proportional fee policy for them instead)
-// 2m for now
+// ~2m for now
 const MIN_CHAN_SIZE = 1.9e6
 
 // multiplier for proportional safety ppm margin
@@ -91,7 +91,7 @@ const MIN_FEE_RATE_FOR_REBALANCE = 1
 // max fee rate for rebalancing even if channel earns more
 const MAX_FEE_RATE_FOR_REBALANCE = 799
 // fee rate to stop forwards out of drained channel
-const ROUTING_STOPPING_FEE_RATE = 1000
+const ROUTING_STOPPING_FEE_RATE = 799
 
 // max minutes to spend per rebalance try
 const MINUTES_FOR_REBALANCE = 7
@@ -891,7 +891,7 @@ const updateFees = async () => {
   console.boring(`${getDate()} updateFees() v3`)
 
   if (!ADJUST_POLICIES) {
-    console.log(`${getDate()} ADJUST_POLICIES=false so just simulating what it would've been`)
+    console.log(`${getDate()} ADJUST_POLICIES = false, so dry-running`)
   }
 
   // generate brand new snapshots of peers with ALL the details (slow)
@@ -975,7 +975,7 @@ const updateFees = async () => {
     for (const peer of peers) {
       // current stats
       const now = Date.now()
-      const ppmOld = peer.fee_rate
+      // const ppmOld = peer.fee_rate // already getting this through getReferenceFee(peer)
       const flowOutRecentDaysAgo = daysAgo(peer.routed_out_last_at)
       const logFileData = readRecord(peer.public_key)
 
@@ -1050,6 +1050,7 @@ const updateFees = async () => {
       const outflowString = outflow ? `${pretty(outflow).padStart(10)} sats/day` : ''
       const ppmNewString = ('(' + ppmNew.toFixed(3)).padStart(10) + ')'
     
+      // use ROUTING_STOPPING_FEE_RATE if my side of channel is drained, or new tracked fee rate if higher or not drained
       const appliedFeeRate = isDrained(peer) ? max(ROUTING_STOPPING_FEE_RATE, ppmNewTrunc) : ppmNewTrunc
 
       // assemble warnings
@@ -1108,7 +1109,7 @@ const updateFees = async () => {
                   ppm: ppmNewTrunc,
                   ppmFloat: ppmNew,
                   // for ppm vs Fout data
-                  ppm_old: ppmOld,
+                  ppm_old: ppmRecord, // reference old reference ppm
                   routed_out_msats: peer.routed_out_msats,
                   daysNoRouting: +flowOutRecentDaysAgo.toFixed(1)
                 },
@@ -1240,6 +1241,15 @@ const generateSnapshots = async () => {
     publicKeyToAlias[p.public_key] = p.alias
   })
 
+  // taking notes of when last seen in one place
+  const lastSeenPath = `${LOG_FILES}/lastSeen.json`
+  const lastSeen = fs.existsSync(lastSeenPath) ? JSON.parse(fs.readFileSync(lastSeenPath)) : {}
+  const now = Date.now()
+  for (const peer of peers) {
+    const isFirstRecord = peer.is_offline && !lastSeen[peer.public_key]
+    if (isFirstRecord || !peer.is_offline) lastSeen[peer.public_key] = now
+  }
+  
   // specific routing events
 
   // gets every routing event indexed by out peer
@@ -1418,6 +1428,9 @@ const generateSnapshots = async () => {
   // ==================== add in all extra new data for each peer ==================
   peers.forEach(peer => {
     // fee_earnings is from bos peer call with days specified, not necessary hmm
+
+    // my rough estimate of last seen
+    peer.last_seen_days_ago = +daysAgo(lastSeen[peer.public_key]).toFixed(1)
 
     // place holders for rebelancing data
     peer.rebalanced_out_last_at = rebalancesByPeer[peer.public_key]?.rebalanced_out_last_at || 0
@@ -1720,16 +1733,6 @@ const generateSnapshots = async () => {
   `
   console.log(nodeSummary)
 
-  // taking notes of when last seen in one place
-  const lastSeenPath = `${LOG_FILES}/lastSeen.json`
-  const lastSeen = fs.existsSync(lastSeenPath) ? JSON.parse(fs.readFileSync(lastSeenPath)) : {}
-  const now = Date.now()
-  for (const peer of peers) {
-    const isFirstRecord = peer.is_offline && !lastSeen[peer.public_key]
-    if (isFirstRecord || !peer.is_offline) lastSeen[peer.public_key] = now
-  }
-  fs.writeFileSync(lastSeenPath, JSON.stringify(lastSeen))
-
   // by channel flow rate summary
 
   // sort by most to least flow total, normalized by capacity
@@ -1821,7 +1824,7 @@ const generateSnapshots = async () => {
       ${' '.repeat(15)}me  ${(p.fee_rate + 'ppm').padStart(7)} [-${local}--|--${remote}-] ${(p.inbound_fee_rate + 'ppm').padEnd(7)} ${p.alias} (./peers/${p.public_key.slice(0, 10)}.json) ${htlcsString}${p.balance.toFixed(1)}b ${isNetOutflowing(p) ? 'F_net-->' : ''}${isNetInflowing(p) ? '<--F_net' : ''} ${issuesString}
       ${dim}${routeIn.padStart(26)} <---- routing ----> ${routeOut.padEnd(23)} +${routeOutEarned.padEnd(17)} ${routeInPpm.padStart(5)}|${routeOutPpm.padEnd(10)} ${('#' + p.routed_in_count).padStart(5)}|#${p.routed_out_count.toString().padEnd(5)}${undim}
       ${dim}${rebIn.padStart(26)} <-- rebalancing --> ${rebOut.padEnd(23)} -${rebOutFees.padEnd(17)} ${rebInPpm.padStart(5)}|${rebOutPpm.padEnd(10)} ${('#' + p.rebalanced_in_count).padStart(5)}|#${p.rebalanced_out_count.toString().padEnd(5)}${undim}
-      ${dim}${lifeTimeReceivedFlowrate.padStart(26)} <- avg. lifetime -> ${lifetimeSentFlowrate.padEnd(23)} ${capacityUsed.padStart(18)} over ${oldestChannelAge}
+      ${dim}${lifeTimeReceivedFlowrate.padStart(26)} <- avg. lifetime -> ${lifetimeSentFlowrate.padEnd(23)} ${capacityUsed.padStart(18)} over ~${oldestChannelAge}
       ${dim}${' '.repeat(17)} ${lastRoutedInString} <-- last routed --> ${lastRoutedOutString}  ${lastPpmChangeString || 'no ppm change data found'}${undim}
       ${dim}${' '.repeat(17)}rebalances-in (<--) used (ppm): ${rebalanceHistory.s}${undim}
       ${dim}${' '.repeat(17)}rebalances-in (<--) est. (ppm): ${rebalanceSuggestionHistory.s}${undim}
@@ -1846,6 +1849,8 @@ const generateSnapshots = async () => {
   fs.writeFileSync(`${LOG_FILES}/${getDay()}_peers.json`, JSON.stringify(peers, fixJSON, 2))
   fs.writeFileSync(`${SNAPSHOTS_PATH}/peers.json`, JSON.stringify(peers, fixJSON, 2))
   fs.writeFileSync('_peers.json', JSON.stringify(peers, fixJSON, 2)) // got tired of opening folder
+  // last seen info in one place
+  fs.writeFileSync(lastSeenPath, JSON.stringify(lastSeen))
 
   // public key to peers.json index lookup table
   fs.writeFileSync(
@@ -1967,6 +1972,12 @@ const runBotReconnect = async ({ quiet = false } = {}) => {
 
   const peers = await bos.peers({ is_active: undefined, is_public: undefined })
 
+  if (!peers) {
+    // try re-initializing
+    await bos.initializeAuth()
+    await sleep(2 * 60 * 1000)
+    return await runBotReconnect()
+  }
   if (peers.length === 0) return console.warn('no peers')
 
   const peersOffline = [...offline, ...reconnected] // peers.filter(p => p.is_offline)
@@ -2029,12 +2040,16 @@ const restartNodeProcess = async restarts => {
     process.exit(1)
   }
 
+  // re-initialize lnd access
+  await bos.initializeAuth()  
   return true
 }
 
 // starts everything
 const initialize = async () => {
-  //
+  // get authrized access to node
+  await bos.initializeAuth()
+
   // get your own public key
   const getIdentity = await bos.callAPI('getIdentity')
   if (!getIdentity.public_key || getIdentity.public_key.length < 10) {
