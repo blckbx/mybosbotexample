@@ -67,7 +67,7 @@ Edit `index.js` to your needs. At the top of the script set which `MANAGEMENT SW
 
 
 
-**/TOOLS/**
+**/ TOOLS /**
 
 **Summary:**
 
