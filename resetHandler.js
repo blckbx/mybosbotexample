@@ -16,8 +16,11 @@ const LOOP_TIME_MS = 15 * 1000 // how often to check for request
 const MINUTES_FOR_SHELL_TIMEOUT = 20 // minutes before shell process terminates
 
 // handle resetting services by running the following
-const COMMAND_TO_RUN = 'sudo /home/umbrel/umbrel/scripts/stop && sleep 10 && sudo /home/umbrel/umbrel/scripts/start'
-// const COMMAND_TO_RUN = 'sudo systemctl restart tor' // restart tor service
+
+// umbrel
+// const COMMAND_TO_RUN = 'sudo /home/umbrel/umbrel/scripts/stop && sleep 10 && sudo /home/umbrel/umbrel/scripts/start'
+// bare metal / raspibolt / raspiblitz
+const COMMAND_TO_RUN = 'sudo systemctl restart tor' // restart tor service
 
 // id = timestamp at initialization
 // avoid duplicate handlers
