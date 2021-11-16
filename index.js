@@ -27,7 +27,7 @@ const MINUTES_BETWEEN_STEPS = 10
 // show rebalancing printouts (very verbose routing info (BoS output))
 const SHOW_REBALANCE_LOG = false
 // how often to move payments from db to backup logs
-const DAYS_BETWEEN_DB_CLEANING = 30
+const DAYS_BETWEEN_DB_CLEANING = 15
 // minimum sats away from 0.5 balance to consider off-balance
 const MIN_SATS_OFF_BALANCE = 500e3
 // unbalanced sats below this can stop (bos rebalance requires >50k)
