@@ -73,7 +73,6 @@ const getFee = (f, channelUpdate = false, foundId = null) => {
     const outgoingChannelId = f.out_channel ?? foundId
 
     if (!node.policies[outgoingChannelId]) {
-      // DEBUG && printout('no policy found', stringify(f, fixJSON), `found in channel ${foundId}`, `using fee ${fee}`)
       return fee
     }
 
@@ -81,9 +80,7 @@ const getFee = (f, channelUpdate = false, foundId = null) => {
     const base_fee = (+node.policies[outgoingChannelId]?.base_fee_mtokens || 0) / 1000
     fee = fee_rate * 1e-6 * f.tokens + base_fee
   }
-
-  // DEBUG && printout('getFee', stringify(f, fixJSON), stringify({ foundId, fee }))
-
+  
   return fee
 }
 
@@ -96,7 +93,6 @@ const initialize = async (showLogs = true) => {
     const subForwardRequests = subscribeToForwardRequests({ lnd: node.auth })
 
     subForwardRequests.on('forward_request', f => decideOnForward({ f, showLogs }))
-    // DEBUG && printout('new request', stringify({ ...forward, onion: undefined, hash: f.hash?.slice(0, 5) }, fixJSON))
 
     updatePendingCounts({ subForwardRequests, showLogs })
     showLogs && printout('initialized')
@@ -251,7 +247,6 @@ const updatePendingCounts = async ({ subForwardRequests, showLogs }) => {
   DEBUG && printout(`${channels.length} channels parsed`)
   if (DEBUG && MAX_RAM_USE_MB) getMemoryUsage()
 
-  // console.log({ idToKey, keyToAlias })
   await sleep(UPDATE_DELAY)
 
   // loop
@@ -288,7 +283,7 @@ const printout = (...args) => {
   })
 }
 
-const getMemoryUsage = ({ quiet = false } = {}) => {
+const getMemoryUsage = ({ quiet = true } = {}) => {
   const memUse = process.memoryUsage()
   const heapTotal = +(memUse.heapTotal / 1024 / 1024).toFixed(0)
   const heapUsed = +(memUse.heapUsed / 1024 / 1024).toFixed(0)
