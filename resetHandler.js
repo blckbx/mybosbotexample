@@ -19,6 +19,7 @@ const MINUTES_FOR_SHELL_TIMEOUT = 20 // minutes before shell process terminates
 
 // umbrel
 // const COMMAND_TO_RUN = 'sudo /home/umbrel/umbrel/scripts/stop && sleep 10 && sudo /home/umbrel/umbrel/scripts/start'
+
 // bare metal / raspibolt / raspiblitz
 const COMMAND_TO_RUN = 'sudo systemctl restart tor' // restart tor service
 
