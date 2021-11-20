@@ -44,12 +44,12 @@ ALL TASKS COMPLETED:
 
 Bosbot is setting channel fees based on activity per hours/days or manually if defined in settings.json. Fees are adjusted faster upwards than downwards. Best practice: For a new channel set fees initially high and let it drop (Bosbot) until forwards happen. Initial fees have to be set by LND favourably (lnd.conf, bitcoin section). Edge cases can be set in settings.json, e.g. no rebalancing to remote side for draining-only channels (like LN exchanges). Furthermore Bosbot is setting max htlc sizes for each channel to reduce channel failures on forwards.
 ````
-Channel A                      max htlc:   4_194_304
+Channel A                      max htlc:     262_144
 Channel B                      max htlc:     524_288
-Channel C                      max htlc:   2_097_152
+Channel C                      max htlc:   1_048_576
 Channel D                      max htlc:   2_097_152
-Channel E                      max htlc:   2_097_152
-Channel F                      max htlc:     524_288
+Channel E                      max htlc:   4_194_304
+Channel F                      max htlc:   8_388_608
 ````
 
 ## **HTLC Limiter / Firewall:**
