@@ -5,6 +5,10 @@
 Bosbot is designed to manage lightning nodes (rebalancing, fee adjustment, connectivity management). In this early state the script has set hardcoded parameters which will be changed in future releases to fit nodes in different shapes and sizes. For now Bosbot assumes that there are enough channels for rebalancing and channel sizes are above 2M satoshis. Bosbot collects statistically valuable data to determine convenient parameters for its management routines.
 Bosbot needs Balance of Satoshi (BoS: https://github.com/alexbosworth/balanceofsatoshis) globally installed.
 
+Tested configuration:
+- LND-0.14.0-beta
+- BoS 11.12.0 (npm 8.1.3, node v16.13.0)
+
 ## **Rebalancing:**
 
 Bosbot tries to balance imbalanced channels close to 1:1. Imbalance is detected if channels liquidity is `MIN_SATS_OFF_BALANCE` away from perfect balance. Especially depleted channels (liquidity < `MIN_SATS_PER_SIDE` on local or remote side) are treated as rebalance candidates. Rebelance amount is set between `MIN_REBALANCE_SATS` (BoS minimum size) and `MAX_REBALANCE_SATS`, preferably off-balance amount. Bosbot takes inbound fee (peers' fees) and historic data into account and adds a safety margin before rebalancing (cost effectiveness), so ideally future expected income (future forwards) earn profit. In addition, Bosbot rebalances pairs of local-heavy and remote-heavy channels up to `MAX_PARALLEL_REBALANCES` in parallel.
@@ -36,7 +40,7 @@ ALL TASKS COMPLETED:
   0 rebalancing runs done for Channel I --> Channel J 
 ````
 
-## **Fee adjustment / Max HTLC sizes per Channel:**
+## **Fee Adjustment / Max HTLC Sizes per Channel:**
 
 Bosbot is setting channel fees based on activity per hours/days or manually if defined in settings.json. Fees are adjusted faster upwards than downwards. Best practice: For a new channel set fees initially high and let it drop (Bosbot) until forwards happen. Initial fees have to be set by LND favourably (lnd.conf, bitcoin section). Edge cases can be set in settings.json, e.g. no rebalancing to remote side for draining-only channels (like LN exchanges). Furthermore Bosbot is setting max htlc sizes for each channel to reduce channel failures on forwards.
 ````
@@ -50,7 +54,7 @@ Channel F                      max htlc:     524_288
 
 ## **HTLC Limiter / Firewall:**
 
-A module to watch and limit numbers of pending htlcs per channel based on fee policies. In parallel it watches for forwarding requests, calculates the htlc's fee and adds it to a fee range (currently 2^X). If the number of pending htlcs within a given fee range exceeds the limit, the forward is rejected. For now there're more htlcs allowed for outgoing than incoming direction. Also it acts as a rate limiter for htlcs. Module is started in a separate process by `npm run start-limiter`
+A module to watch and limit numbers of pending htlcs per channel based on fee policies. In parallel it watches for forwarding requests, calculates the htlc's fee and adds it to a fee range (currently 2^X). If the number of pending htlcs within a given fee range exceeds the limit, the forward is rejected. For now there're more htlcs allowed for outgoing than incoming direction. Also it acts as a rate limiter for htlcs. 
 ````
 htlcLimiter() ✅       8123  amt,      5.736  fee     ~2^2 Channel A -> Channel B       all: {is_forward: 4, other: 3, out: 5, in: 2}   699469x1484x1 {"1":1,"2":1} -> 699743x2177x1   {"2":1} 
 htlcLimiter() ✅       3353  amt,      1.231  fee     ~2^0 Channel A -> Channel C       all: {is_forward: 6, other: 3, out: 6, in: 3}   699469x1484x1 {"0":1,"1":1,"2":1} -> 694035x2032x1   {"0":1,"1":1} 
@@ -96,10 +100,10 @@ Edit `index.js` to your needs. At the top of the script set which `MANAGEMENT SW
 
 `npm start` : starts bosbot
 
-`npm run start-limiter` : starts htlcLimiter from `\tools\` directory
+`npm run start-limiter` : starts htlcLimiter from `\tools\` directory (in a separate process)
 
 
-## **Adjust settings:**
+## **Adjust Settings:**
 
 `MIN_PPM_ABSOLUTE`: minimum fees
 
@@ -117,7 +121,7 @@ Edit `index.js` to your needs. At the top of the script set which `MANAGEMENT SW
 5) runBot() // repeat every x minutes (`MINUTES_BETWEEN_STEPS`)
 
 
-## **Fine-Tuning:**
+## **Fine Tuning:**
 
 1) Setup Telegram Bot: Edit settings.json to your needs. Add HTTP API Token (set by BotFather) and chat id (lookup "/id" on Telegram).
 2) Set rules for channels (see settings.json.example): aliasMatch, min_ppm, max_ppm, no_local_rebalance, no_remote_balance, max_htlc_sats, AVOID_LIST (nodes to exclude from rebalancing (even in-path))
