@@ -1,4 +1,4 @@
-## BosBot (example) - Don't use as is - Don't trust, verify!
+# BosBot (example) - Don't use as is - Don't trust, verify!
 
 ## **Prerequisites:**
 
