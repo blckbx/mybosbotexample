@@ -150,6 +150,8 @@ Running `node nodes_in_path` shows most used nodes in past rebalances. Switches 
 Running `node lookup <alias>` displays data of a specific alias/peer.
 
 ___________________________________________________________
+## original description by legalizemath
+
 just meant as an example of how wrapping of bos (balanceofsatoshis) can be done in node
 
 this does everything through bos by wrapping the js functions bos uses to act on terminal commands, bos wasn't made for calling these functions directly from other projects (yet) so compatibility can easily change and should be just used as an example
