@@ -40,7 +40,7 @@ const AVOID_LIST = []
 // smaller = can use smaller liquidity/channels for cheaper/easier rebalances
 // bos rebalance does probing + size up htlc strategy
 // (bos rebalance requires >50k)
-const MAX_REBALANCE_SATS = 1e5
+const MAX_REBALANCE_SATS = 2e5
 
 // rebalance with faster keysends after bos rebalance works
 // (faster but higher risk of stuck sats so I send less)
@@ -75,8 +75,6 @@ const MINUTES_BETWEEN_FEE_CHANGES = 121
 const NUDGE_UP = 0.0314
 // max size of fee adjustment downward
 const NUDGE_DOWN = 0.00314
-// max hours since last successful routing out to allow increasing fee
-const HOURS_FOR_FEE_INCREASE = (MINUTES_BETWEEN_FEE_CHANGES * 1.5) / 60.0
 // min days of no routing activity before allowing reduction in fees
 const DAYS_FOR_FEE_REDUCTION = 4.2
 
@@ -89,7 +87,7 @@ const MIN_SATS_PER_SIDE = 1e6
 // rebalancing fee rates below this aren't considered for rebalancing
 const MIN_FEE_RATE_FOR_REBALANCE = 1
 // max fee rate for rebalancing even if channel earns more
-const MAX_FEE_RATE_FOR_REBALANCE = 799
+const MAX_FEE_RATE_FOR_REBALANCE = 599
 // fee rate to stop forwards out of drained channel
 const ROUTING_STOPPING_FEE_RATE = 999
 
@@ -128,6 +126,7 @@ const MINUTES_BETWEEN_RECONNECTS = 60
 
 // show everything
 const VERBOSE = true
+const DEBUG = true
 
 // what to weight random selection by
 const WEIGHT_OPTIONS = {}
@@ -276,7 +275,8 @@ const runBotRebalanceOrganizer = async () => {
     // level of emergency decided by both channels 0-1
     const levelOfEmergency = max(WEIGHT(remoteHeavy), WEIGHT(localHeavy))
     // time dependence starts at 0 and ~1 after DAYS_FOR_FEE_REDUCTION
-    const channelsAge = min(...remoteHeavy.ids.map(c => c.channel_age_days))
+    const channelsAge = min(...(remoteHeavy.ids.map(c => c.channel_age_days || 0) || [0]))
+    if (DEBUG && !remoteHeavy.ids) console.log('unknown channel ids on remote heavy peer', remoteHeavy)
     const timeDependence = 1 - exp((-PI * channelsAge) / DAYS_FOR_FEE_REDUCTION)
     // low levels of emergency will try less hard
     // high level of emergency will go as high as subtractSafety allows
@@ -796,15 +796,12 @@ const runBotReconnectCheck = async () => {
   if (isTimeForReconnect) {
     // check for internet / tor issues
     await runBotReconnect()
-
+    mynode.timers = {
+      ...timers,
+      lastReconnect: now
+    }
     // update timer
-    fs.writeFileSync(
-      TIMERS_PATH,
-      JSON.stringify({
-        ...timers,
-        lastReconnect: now
-      })
-    )
+    fs.writeFileSync(TIMERS_PATH, JSON.stringify(mynode.timers))
 
     console.log(`${getDate()} Updated ${TIMERS_PATH}`)
   }
@@ -827,14 +824,14 @@ const runUpdateFeesCheck = async () => {
   if (isTimeForFeeUpdate) {
     // update fees
     await updateFees()
+    mynode.timers = {
+      ...timers,
+      lastFeeUpdate: now
+    }
+
     // update timer
-    fs.writeFileSync(
-      TIMERS_PATH,
-      JSON.stringify({
-        ...timers,
-        lastFeeUpdate: now
-      })
-    )
+    fs.writeFileSync(TIMERS_PATH, JSON.stringify(mynode.timers))
+
     console.log(`${getDate()} Updated ${TIMERS_PATH}`)
   }
 }
@@ -858,14 +855,14 @@ const runCleaningCheck = async () => {
   if (isTime) {
     // clean db
     await runCleaning()
+    mynode.timers = {
+      ...timers,
+      lastCleaningUpdate: now
+    }
+
     // update timer
-    fs.writeFileSync(
-      TIMERS_PATH,
-      JSON.stringify({
-        ...timers,
-        lastCleaningUpdate: now
-      })
-    )
+    fs.writeFileSync(TIMERS_PATH, JSON.stringify(mynode.timers))
+
     console.log(`${getDate()} Updated ${TIMERS_PATH}`)
   }
 }
@@ -963,9 +960,18 @@ const updateFees = async () => {
     let nIncreased = 0
     let nDecreased = 0
 
-    // fetch forwards since last policy update
-    // replace with checking timestamp later
-    const daysSinceLastChange = HOURS_FOR_FEE_INCREASE / 24.0
+    // fetch forwards since last policy update or fee update range
+    // adding 10% to bridge any minor gaps
+    const daysSinceLastChange = mynode.timers?.lastFeeUpdate
+      ? daysAgo(mynode.timers.lastFeeUpdate) * 1.1
+      : (MINUTES_BETWEEN_FEE_CHANGES * 1.1) / 60.0 / 24.0
+
+    DEBUG &&
+      console.log(
+        `${getDate()} testing time diff`,
+        { daysSinceLastChange },
+        { lastFeeUpdate: mynode.timers.lastFeeUpdate }
+      )
     const forwardsSinceUpdate = await bos.customGetForwardingEvents({
       days: daysSinceLastChange
     })
@@ -993,7 +999,7 @@ const updateFees = async () => {
 
       // determine rules when to increase and decrease
 
-      let isIncreasing = flowOutRecentDaysAgo < HOURS_FOR_FEE_INCREASE / 24.0
+      let isIncreasing = flowOutRecentDaysAgo < daysSinceLastChange
 
       let isDecreasing =
         !isIncreasing &&
@@ -1740,7 +1746,7 @@ const generateSnapshots = async () => {
   // lower rating uses capacity worse or not at all and recommended for changes
   // const score = p => (p.routed_out_msats + p.routed_in_msats) / p.capacity // uses available capacity best
   // const score = p => ((p.routed_out_fees_msats + p.routed_in_fees_msats) / p.capacity) * 1e6 // best returns for available capacity
-  const score = p => p.routed_out_fees_msats + p.routed_in_fees_msats // best returns overall
+  const score = p => p.routed_out_fees_msats + p.routed_in_fees_msats
 
   peers.sort((a, b) => score(b) - score(a))
 
@@ -1769,7 +1775,7 @@ const generateSnapshots = async () => {
     const lastPpmChangeMinutes = lastPpmChange && ((Date.now() - (lastPpmChange.t || 0)) / (1000 * 60)).toFixed(0)
     const lastPpmChangeString =
       lastPpmChange && lastPpmChange.ppm_old
-        ? `last ∆ppm: ${lastPpmChange.ppm_old}->${lastPpmChange.ppm}ppm @ ` +
+      ? `last ∆ppm: ${lastPpmChange.ppm_old?.toFixed(3)} -> ${lastPpmChange.ppmFloat?.toFixed(3)} ppm @ ` +
         `${(lastPpmChangeMinutes / 60 / 24).toFixed(1)} days ago`
         : ''
 
@@ -1820,7 +1826,7 @@ const generateSnapshots = async () => {
     const htlcsString = p.pending_count ? `${p.pending_count}-htlcs ` : ' '
 
     // prettier-ignore
-    flowRateSummary += `${('#' + (i + 1)).padStart(4)} ${pretty(score(p))}
+    flowRateSummary += `${('#' + (i + 1)).padStart(4)}  score: ${pretty(score(p))} pubkey: ${p.public_key}
       ${' '.repeat(15)}me  ${(p.fee_rate + 'ppm').padStart(7)} [-${local}--|--${remote}-] ${(p.inbound_fee_rate + 'ppm').padEnd(7)} ${p.alias} (./peers/${p.public_key.slice(0, 10)}.json) ${htlcsString}${p.balance.toFixed(1)}b ${isNetOutflowing(p) ? 'F_net-->' : ''}${isNetInflowing(p) ? '<--F_net' : ''} ${issuesString}
       ${dim}${routeIn.padStart(26)} <---- routing ----> ${routeOut.padEnd(23)} +${routeOutEarned.padEnd(17)} ${routeInPpm.padStart(5)}|${routeOutPpm.padEnd(10)} ${('#' + p.routed_in_count).padStart(5)}|#${p.routed_out_count.toString().padEnd(5)}${undim}
       ${dim}${rebIn.padStart(26)} <-- rebalancing --> ${rebOut.padEnd(23)} -${rebOutFees.padEnd(17)} ${rebInPpm.padStart(5)}|${rebOutPpm.padEnd(10)} ${('#' + p.rebalanced_in_count).padStart(5)}|#${p.rebalanced_out_count.toString().padEnd(5)}${undim}
@@ -1938,7 +1944,7 @@ const addDetailsFromSnapshot = peers => {
     p.rndWeight = WEIGHT(p)
 
     // individual channel info
-    p.ids = fromFilePeers[i]?.ids
+    p.ids = fromFilePeers[i]?.ids || []
   }
 }
 
@@ -2009,7 +2015,7 @@ const runBotReconnect = async ({ quiet = false } = {}) => {
   // restart node processes
   mynode.last_restart = Date.now()
   mynode.offline_limit = min(mynode.offline_limit + 1, 100) // up to 100%
-  await restartNodeProcess(mynode.restart_failures++)
+  await restartNodeProcess(++mynode.restart_failures)
 
   console.log(`${getDate()} checking everything again`)
   // process.exit(0)
@@ -2068,14 +2074,15 @@ const initialize = async () => {
 
       "${mynode.my_public_key}"
 
-    max fee rate change per day is
+    `+
+    (ADJUST_POLICIES_FEES ? `max fee rate change per day is
 
       up:   ${maxUpFeeChangePerDay.toFixed(1)} %
-      (if routed-out last ${HOURS_FOR_FEE_INCREASE.toFixed(1)} hours)
+      (if routed-out last ${(MINUTES_BETWEEN_FEE_CHANGES / 60.0).toFixed(1)} hours)
 
       down: ${maxDownFeeChangePerDay.toFixed(1)} %
-        (if no routing-out for ${DAYS_FOR_FEE_REDUCTION.toFixed(1)} days)
-
+        (if no routing-out for ${DAYS_FOR_FEE_REDUCTION.toFixed(1)} days)`:``)
+    +`
 
     IF THIS IS INCORRECT, ctrl + c
 
@@ -2106,14 +2113,19 @@ const initialize = async () => {
     }
   }
 
-  // generate timers file if there's not one
+  // timers
   if (!fs.existsSync(TIMERS_PATH)) {
-    fs.writeFileSync(TIMERS_PATH, JSON.stringify(DEFAULT_TIMERS))
+    fs.writeFileSync(TIMERS_PATH, JSON.stringify(mynode.timers))
+    console.log(`${getDate()} created timers file`, JSON.stringify(mynode.timers))
+  } else {
+    mynode.timers = JSON.parse(fs.readFileSync(TIMERS_PATH)) ?? mynode.timers
+    console.log(`${getDate()} found timers file`, JSON.stringify(mynode.timers))
   }
 
   // generate snapshots at start to ensure recent data
   await generateSnapshots()
 
+  // small pause for friendly stop
   await sleep(5 * 1000)
 
   // start bot loop
