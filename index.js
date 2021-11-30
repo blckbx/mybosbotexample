@@ -6,6 +6,7 @@ import dns from 'dns' // comes with nodejs, to check if there's internet access
 import bos from './bos.js' // my wrapper for bos, needs to be in same folder
 
 const { min, max, trunc, floor, abs, random, log2, pow, ceil, exp, PI } = Math
+const copy = item => JSON.parse(JSON.stringify(item)) // copy values to new item, useful
 
 // #MANAGEMENT SWITCHES#
 // allow BOS reconnect
@@ -163,7 +164,8 @@ const mynode = {
   restart_failures: 0,
   offline_limit: PEERS_OFFLINE_PERCENT_MAXIMUM,
   peers: [],
-  htlcLimiter: {}
+  htlcLimiter: {},
+  timers: copy(DEFAULT_TIMERS)
 }
 
 const runBot = async () => {
@@ -769,14 +771,11 @@ const runBotReconnectCheck = async () => {
     console.log(`${getDate()} too many peers offline. Running early reconnect.`)
     await runBotReconnect()
     // update timer
-    fs.writeFileSync(
-      TIMERS_PATH,
-      JSON.stringify({
-        ...timers,
-        lastReconnect: now
-      })
-    )
-
+    mynode.timers = {
+      ...timers,
+      lastReconnect: now
+    }
+    fs.writeFileSync(TIMERS_PATH, JSON.stringify(mynode.timers))
     console.log(`${getDate()} Updated ${TIMERS_PATH}`)
 
     return null
@@ -800,6 +799,7 @@ const runBotReconnectCheck = async () => {
       ...timers,
       lastReconnect: now
     }
+
     // update timer
     fs.writeFileSync(TIMERS_PATH, JSON.stringify(mynode.timers))
 
@@ -831,7 +831,6 @@ const runUpdateFeesCheck = async () => {
 
     // update timer
     fs.writeFileSync(TIMERS_PATH, JSON.stringify(mynode.timers))
-
     console.log(`${getDate()} Updated ${TIMERS_PATH}`)
   }
 }
@@ -859,10 +858,8 @@ const runCleaningCheck = async () => {
       ...timers,
       lastCleaningUpdate: now
     }
-
     // update timer
     fs.writeFileSync(TIMERS_PATH, JSON.stringify(mynode.timers))
-
     console.log(`${getDate()} Updated ${TIMERS_PATH}`)
   }
 }
@@ -2227,9 +2224,6 @@ const ca = alias => alias.replace(/[^\x00-\x7F]/g, '').trim() // .replace(/[\u{0
 // console log colors
 const dim = '\x1b[2m'
 const undim = '\x1b[0m'
-
-// copy values to new item
-const copy = item => JSON.parse(JSON.stringify(item))
 
 // returns mean, truncated fractions
 const median = (numbers = [], { f = v => v, pr = 0 } = {}) => {
