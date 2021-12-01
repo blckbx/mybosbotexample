@@ -6,7 +6,7 @@ Bosbot is designed to manage lightning nodes (rebalancing, fee adjustment, conne
 Bosbot needs Balance of Satoshi (BoS: https://github.com/alexbosworth/balanceofsatoshis) globally installed.
 
 Tested configuration:
-- LND-0.14.0-beta
+- LND-0.14.1-beta
 - BoS 11.12.0 (npm 8.1.3, node v16.13.0)
 
 ## **Rebalancing:**
@@ -43,13 +43,25 @@ ALL TASKS COMPLETED:
 ## **Fee Adjustment / Max HTLC Sizes per Channel:**
 
 Bosbot is setting channel fees based on activity per hours/days or manually if defined in settings.json. Fees are adjusted faster upwards than downwards. Best practice: For a new channel set fees initially high and let it drop (Bosbot) until forwards happen. Initial fees have to be set by LND favourably (lnd.conf, bitcoin section). Edge cases can be set in settings.json, e.g. no rebalancing to remote side for draining-only channels (like LN exchanges). Furthermore Bosbot is setting max htlc sizes for each channel to reduce channel failures on forwards.
+
+
 ````
-Channel A                      max htlc:     262_144
-Channel B                      max htlc:     524_288
-Channel C                      max htlc:   1_048_576
-Channel D                      max htlc:   2_097_152
-Channel E                      max htlc:   4_194_304
-Channel F                      max htlc:   8_388_608
+Fee Adjustment
+Channel A    9999    same   ppm   (799.000)         no flow    7+ days    0.1M|1.9M    max htlc:      65_536   💤-VRH ⛔-BLOCK 9999ppm
+Channel B     700    same   ppm   (700.000)         no flow    7+ days    1.0M|1.0M    max htlc:     524_288   💤-VRH
+Channel C     275 -> 274    ppm   (274.000)         no flow    7+ days    1.0M|1.0M    max htlc:   1_048_576  ↘ 
+Channel D     222    same   ppm   (222.000)       inflowing   0.1 days    1.0M|2.0M    max htlc:   1_048_576     66_666 sats/day 
+Channel E     513 -> 532    ppm   (532.000)      outflowing   1.1 days    4.0M|5.0M    max htlc:   4_194_304  ↗
+Channel F     400    same   ppm   (400.000)      outflowing   0.5 days    2.5M|2.5M    max htlc:   2_097_152
+
+
+Max HTLC Size Adjustment
+Channel A     max htlc:     262_144
+Channel B     max htlc:     524_288
+Channel C     max htlc:   1_048_576
+Channel D     max htlc:   2_097_152
+Channel E     max htlc:   4_194_304
+Channel F     max htlc:   8_388_608
 ````
 
 ## **HTLC Limiter / Firewall:**
@@ -76,8 +88,24 @@ htlcLimiter() ✅       8123  amt,      5.736  fee     ~2^2 Channel A -> Channel
 
 ## **Backup Payments:**
 
-To clean and speed up LND, backing up and removing payments from channel.db to external files (json) is a way to do so. Backup files are saved into `\logs\` directory and read on startup.
+To clean and speed up LND, backing up and removing payments from `channel.db` to external files (json) is a way to do so. Backup files are saved into `\logs\` directory and read on startup.
 
+Cleaning DB:
+````
+runCleaning()
+555 payments backed up
+all payments deleted from database
+````
+
+Reading Files:
+````
+generateSnapshots()
+0 payment records found in db
+1111111111111_paymentHistory.json - is Recent? false
+2222222222222_paymentHistory.json - is Recent? false
+3333333333333_paymentHistory.json - is Recent? false
+4444444444444_paymentHistory.json - is Recent? true
+````
 
 ## **Usage:**
 
