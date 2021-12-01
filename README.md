@@ -177,7 +177,7 @@ Running `node nodes_in_path` shows most used nodes in past rebalances. Switches 
 
 Running `node lookup <alias>` displays data of a specific alias/peer.
 
-** IsItDown:**
+**IsItDown:**
 
 Query a node's number of disabled channels to get picture if a certain node is possibly down or if there are connectivity problems. `node isitdown <alias>`
 
