@@ -107,6 +107,20 @@ generateSnapshots()
 4444444444444_paymentHistory.json - is Recent? true
 ````
 
+## **BoS Reconnect:**
+
+Checks frequently (`MINUTES_BETWEEN_RECONNECTS`) for offline / inactive peers and tries to reconnect them with `bos reconnect`. Additionally a Telegram message with stats of successful or unsuccessful reconnects is being sent:
+````
+🔌 Offline Statistics:
+ 3 / x peers offline (y%):
+- Node 1
+- Node 2
+- Node 3
+Reconnected: 
+- Node 1
+ (BoS reconnects every x minutes).
+````
+
 ## **Usage:**
 
 Edit `index.js` to your needs. At the top of the script set which `MANAGEMENT SWITCHES` should apply.
