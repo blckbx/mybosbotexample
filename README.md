@@ -107,7 +107,7 @@ generateSnapshots()
 4444444444444_paymentHistory.json - is Recent? true
 ````
 
-## **BoS Reconnect:**
+## **🔌 BoS Reconnect:**
 
 Checks frequently (`MINUTES_BETWEEN_RECONNECTS`) for offline / inactive peers and tries to reconnect them with `bos reconnect`. Additionally a Telegram message with stats of successful or unsuccessful reconnects is being sent:
 ````
@@ -119,6 +119,17 @@ Checks frequently (`MINUTES_BETWEEN_RECONNECTS`) for offline / inactive peers an
 Reconnected: 
 - Node 1
  (BoS reconnects every x minutes).
+````
+
+## **🌱 Statistics for 7 days:**
+
+On every run Bos Bot messages some statistics about earned, spent and net sats for last 7 days. Routing rewards are displayed in min, 1/4th, median, avgerage, 3/4th and max amounts as well as the number of routings:
+````
+🌱 Statistics for 7 days:
+earned: 2000
+spent: 1000
+net: 1000
+routing rewards: (n: 100) min: 1, 1/4th: 2.5, median: 5.5, avg: 20.5, 3/4th: 21, max: 210.0
 ````
 
 ## **Usage:**
