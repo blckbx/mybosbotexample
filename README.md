@@ -1,4 +1,4 @@
-# BosBot (example) - Don't use as is - Don't trust, verify!
+# ⚡ BosBot (example) - Don't use as is - Don't trust, verify! ⚡
 
 ## **Prerequisites:**
 
@@ -9,7 +9,7 @@ Tested configuration:
 - LND-0.14.1-beta
 - BoS 11.12.0 (npm 8.1.3, node v16.13.0)
 
-## **Rebalancing:**
+## **🧬 Rebalancing:**
 
 Bosbot tries to balance imbalanced channels close to 1:1. Imbalance is detected if channels liquidity is `MIN_SATS_OFF_BALANCE` away from perfect balance. Especially depleted channels (liquidity < `MIN_SATS_PER_SIDE` on local or remote side) are treated as rebalance candidates. Rebelance amount is set between `MIN_REBALANCE_SATS` (BoS minimum size) and `MAX_REBALANCE_SATS`, preferably off-balance amount. Bosbot takes inbound fee (peers' fees) and historic data into account and adds a safety margin before rebalancing (cost effectiveness), so ideally future expected income (future forwards) earn profit. In addition, Bosbot rebalances pairs of local-heavy and remote-heavy channels up to `MAX_PARALLEL_REBALANCES` in parallel.
 ````
@@ -40,7 +40,7 @@ ALL TASKS COMPLETED:
   0 rebalancing runs done for Channel I --> Channel J 
 ````
 
-## **Fee Adjustment / Max HTLC Sizes per Channel:**
+## **📊 Fee Adjustment / 🚧 Max HTLC Sizes per Channel:**
 
 Bosbot is setting channel fees based on activity per hours/days or manually if defined in settings.json. Fees are adjusted faster upwards than downwards. Best practice: For a new channel set fees initially high and let it drop (Bosbot) until forwards happen. Initial fees have to be set by LND favourably (lnd.conf, bitcoin section). Edge cases can be set in settings.json, e.g. no rebalancing to remote side for draining-only channels (like LN exchanges). Furthermore Bosbot is setting max htlc sizes for each channel to reduce channel failures on forwards.
 
@@ -64,7 +64,7 @@ Channel E     max htlc:   4_194_304
 Channel F     max htlc:   8_388_608
 ````
 
-## **HTLC Limiter / Firewall:**
+## **🧱 HTLC Limiter / Firewall:**
 
 A module to watch and limit numbers of pending htlcs per channel based on fee policies. In parallel it watches for forwarding requests, calculates the htlc's fee and adds it to a fee range (currently 2^X). If the number of pending htlcs within a given fee range exceeds the limit, the forward is rejected. For now there're more htlcs allowed for outgoing than incoming direction. Also it acts as a rate limiter for htlcs. 
 ````
@@ -86,7 +86,7 @@ htlcLimiter() ✅       8261  amt,      2.448  fee     ~2^1 Channel A -> Channel
 htlcLimiter() ✅       8123  amt,      5.736  fee     ~2^2 Channel A -> Channel B       all: {is_forward: 2, other: 5, out: 6, in: 1}   699469x1484x1 {"2":1} -> 699743x2177x1   {"2":1} 
 ````
 
-## **Backup Payments:**
+## **🗄 Backup Payments:**
 
 To clean and speed up LND, backing up and removing payments from `channel.db` to external files (json) is a way to do so. Backup files are saved into `\logs\` directory and read on startup.
 
