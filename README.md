@@ -161,6 +161,73 @@ Edit `index.js` to your needs. At the top of the script set which `MANAGEMENT SW
 **Summary:**
 
 Run `node lndsummary` to gather useful data based on your node's statistics (balances, fees, weekly stats for profits and forwards)
+````
+  NODE SUMMARY:
+
+    total peers:                      x
+
+    off-chain local available:        x sats
+    off-chain remote available:       x sats
+    off-chain total:                  x sats
+    off-chain unsettled:              x sats (n: x)
+    off-chain pending                 x sats
+
+    on-chain closing:                 x sats
+    on-chain total:                   x sats
+  -------------------------------------------------------------
+    my base fee stats:                (n: x) min: x, 1/4th: x, median: x, avg: x, 3/4th: x, max: x msats
+    my proportional fee stats:        (n: x) min: x, 1/4th: x, median: x, avg: x, 3/4th: x, max: x ppm
+    my channel capacity stats:        (n: x) min: x, 1/4th: x, median: x, avg: x, 3/4th: x, max: x sats
+    lifetime all peers sent:          x sats
+    lifetime all peers received:      x sats
+    lifetime capacity used:           x %
+  -------------------------------------------------------------
+    (Per last 7 days)
+
+    total earned:                     x sats
+    total on-chain fees:              x sats
+    total ln fees paid:               x sats
+
+    NET PROFIT:                       x sats
+
+    LN received from others:          x sats (n: x)
+    LN payments to others:            x sats, fees: x sats (n: x)
+    LN total rebalanced:              x sats, fees: x (n: x)
+    LN total forwarded:               x sats (n: x)
+
+    forwards stats by size:
+
+    0 - 100 sats                      x sats routed              (n: x)
+                                      x sats earned              (x ppm)
+
+    100 - 10k sats                    x sats routed              (n: x)
+                                      x sats earned              (x ppm)
+
+    10k - 1M sats                     x sats routed              (n: x)
+                                      x sats earned              (x ppm)
+
+    1M - 100M sats                    x sats routed              (n: x)
+                                      x sats earned              (x ppm)
+
+    peers used for routing-out:       x / x
+    peers used for routing-in:        x / x
+    earned per peer stats:            (n: x) min: x, 1/4th: x, median: x, avg: x, 3/4th: x, max: x sats
+
+    % routed/local                    x %
+    % net-profit/earned               x %    
+    avg earned/routed:                x ppm
+    avg net-profit/routed:            x ppm
+    avg earned/local:                 x ppm
+    avg net-profit/local:             x ppm
+    est. annual ROI:                  x %
+    est. annual profit:               x sats
+  -------------------------------------------------------------
+    total unbalanced local:           x sats
+    total unbalanced remote:          x sats
+    total unbalanced:                 x sats
+    total unbalanced sats percent:    x %
+    net unbalanced:                   x sats
+````
 
 **Visualization:**
 
@@ -179,7 +246,7 @@ Running `node lookup <alias>` displays data of a specific alias/peer.
 
 **IsItDown:**
 
-Query a node's number of disabled channels to get picture if a certain node is possibly down or if there are connectivity problems. `node isitdown <alias>`
+Query a node's number of disabled channels to get an overview if a certain node is possibly down or if there are connectivity problems. `node isitdown <alias>`
 
 ````
 $ node isitdown.js alias
