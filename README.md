@@ -11,7 +11,7 @@ Tested configuration:
 
 ## **🧬 Rebalancing:**
 
-Bosbot tries to balance imbalanced channels close to 1:1. Imbalance is detected if channels liquidity is `MIN_SATS_OFF_BALANCE` away from perfect balance. Especially depleted channels (liquidity < `MIN_SATS_PER_SIDE` on local or remote side) are treated as rebalance candidates. Rebelance amount is set between `MIN_REBALANCE_SATS` (BoS minimum size) and `MAX_REBALANCE_SATS`, preferably off-balance amount. Bosbot takes inbound fee (peers' fees) and historic data into account and adds a safety margin before rebalancing (cost effectiveness), so ideally future expected income (future forwards) earn profit. In addition, Bosbot rebalances pairs of local-heavy and remote-heavy channels up to `MAX_PARALLEL_REBALANCES` in parallel.
+BosBot tries to balance imbalanced channels close to 1:1. Imbalance is detected if a channel's liquidity is `MIN_SATS_OFF_BALANCE` away from perfect balance. Especially depleted channels (liquidity < `MIN_SATS_PER_SIDE` on local or remote side) are treated as rebalance candidates. Rebelance amount is set between `MIN_REBALANCE_SATS` (BoS minimum size) and `MAX_REBALANCE_SATS`, preferably exact off-balance amount. BosBot takes inbound fees (peers' fees) and historic data into account and adds a safety margin before rebalancing (cost effectiveness), so ideally future expected income (future forwards) earns some profit. In addition, BosBot rebalances pairs of local-heavy and remote-heavy channels up to `MAX_PARALLEL_REBALANCES` in parallel.
 ````
   🕺(me)  (448)   3.4M [ ||||-> ]   0.6M (20)       Channel A --> ⚡ --> Channel B     (300)   1.7M [ ||||-> ]   0.4M (462)   🕺(me) 1.00w 
   🕺(me)  (248)   9.8M [ ||||-> ]   0.2M (1)        Channel C --> ⚡ --> Channel D      (39)   3.9M [ ||||-> ]   0.1M (899)   🕺(me) 1.00w 
@@ -42,7 +42,7 @@ ALL TASKS COMPLETED:
 
 ## **📊 Fee Adjustment / 🚧 Max HTLC Sizes per Channel:**
 
-Bosbot is setting channel fees based on activity per hours/days or manually if defined in settings.json. Fees are adjusted faster upwards than downwards. Best practice: For a new channel set fees initially high and let it drop (Bosbot) until forwards happen. Initial fees have to be set by LND favourably (lnd.conf, bitcoin section). Edge cases can be set in settings.json, e.g. no rebalancing to remote side for draining-only channels (like LN exchanges). Furthermore Bosbot is setting max htlc sizes for each channel to reduce channel failures on forwards.
+BosBot is applying channel fees based on activity per hours/days or manually if defined in `settings.json`. Fees are adjusted faster upwards than downwards. Best practice: For a new channel set fees initially high and let it drop (automatically with BosBot) until forwards happen. Initial fees have to be set by LND favourably (lnd.conf, bitcoin section). Edge cases can be set in `settings.json`, e.g. no rebalancing to remote side for draining-only channels (like LN exchanges). Furthermore BosBot is setting max htlc sizes for each channel to reduce channel failures on forwards. To obfuscate a channel's balance, max htlc size is calculated to nearest limit of 2^X. 
 
 
 ````
@@ -66,7 +66,7 @@ Channel F     max htlc:   8_388_608
 
 ## **🧱 HTLC Limiter / Firewall:**
 
-A module to watch and limit numbers of pending htlcs per channel based on fee policies. In parallel it watches for forwarding requests, calculates the htlc's fee and adds it to a fee range (currently 2^X). If the number of pending htlcs within a given fee range exceeds the limit, the forward is rejected. For now there're more htlcs allowed for outgoing than incoming direction. Also it acts as a rate limiter for htlcs. 
+A module to watch and limit numbers of pending htlcs per channel based on fee policies. In parallel BosBot watches for forwarding requests, calculates the htlc's fee and adds the forward to its fee range (currently 2^X). If the number of pending htlcs within a given fee range exceeds the limit, the forward is rejected. For now there are more htlcs allowed for outgoing than incoming direction. Also it acts as a rate limiter for htlcs. 
 ````
 htlcLimiter() ✅       8123  amt,      5.736  fee     ~2^2 Channel A -> Channel B       all: {is_forward: 4, other: 3, out: 5, in: 2}   699469x1484x1 {"1":1,"2":1} -> 699743x2177x1   {"2":1} 
 htlcLimiter() ✅       3353  amt,      1.231  fee     ~2^0 Channel A -> Channel C       all: {is_forward: 6, other: 3, out: 6, in: 3}   699469x1484x1 {"0":1,"1":1,"2":1} -> 694035x2032x1   {"0":1,"1":1} 
@@ -109,7 +109,7 @@ generateSnapshots()
 
 ## **🔌 BoS Reconnect:**
 
-Checks frequently (`MINUTES_BETWEEN_RECONNECTS`) for offline / inactive peers and tries to reconnect them with `bos reconnect`. Additionally a Telegram message with stats of successful or unsuccessful reconnects is being sent:
+Checks frequently (`MINUTES_BETWEEN_RECONNECTS`) for offline / inactive peers and tries to reconnect them with `bos reconnect`. Additionally a Telegram message with stats of successful and/or unsuccessful reconnects is being sent:
 ````
 🔌 Offline Statistics:
  3 / x peers offline (y%):
@@ -118,12 +118,12 @@ Checks frequently (`MINUTES_BETWEEN_RECONNECTS`) for offline / inactive peers an
 - Node 3
 Reconnected: 
 - Node 1
- (BoS reconnects every x minutes).
+(BoS reconnects every x minutes).
 ````
 
 ## **🌱 Statistics for 7 days:**
 
-On every run Bos Bot messages some statistics about earned, spent and net sats for last 7 days. Routing rewards are displayed in min, 1/4th, median, avgerage, 3/4th and max amounts as well as the number of routings:
+On every run BosBot messages some statistics about earned, spent and net sats for the last 7 days. Routing rewards are displayed in min, 1/4th, median, average, 3/4th and max amounts as well as the overall count of routings:
 ````
 🌱 Statistics for 7 days:
 earned: 2000
