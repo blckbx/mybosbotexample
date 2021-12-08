@@ -39,6 +39,24 @@ ALL TASKS COMPLETED:
   0 rebalancing runs done for Channel G --> Channel H 
   0 rebalancing runs done for Channel I --> Channel J 
 ````
+Once rebalancing was successful for the first time, Bosbot fires this route again via `bos send` (if allowed) until balance is reached. Sending less amount due to risk of stuck htlcs. The more ppms we could save, the more emojis will be displayed ;)
+
+````
+Updating   Channel A --> Channel B   run #1  <546 ppm rebalance succeeded for 197_737 sats @ 537 ppm 🍀 & moving onto run #2
+Starting   Channel A --> Channel B   run #2 rebalance @  <546 ppm,    781_402 sats left to balance (via bos send)
+Updating   Channel A --> Channel B   run #2  <546 ppm rebalance succeeded for 96_511 sats @ 539 ppm 🍀 & moving onto run #3
+Starting   Channel A --> Channel B   run #3 rebalance @  <546 ppm,    684_891 sats left to balance (via bos send)
+Updating   Channel A --> Channel B   run #3  <546 ppm rebalance succeeded for 92_135 sats @ 542 ppm 🍀 & moving onto run #4
+Starting   Channel A --> Channel B   run #4 rebalance @  <546 ppm,    592_756 sats left to balance (via bos send)
+Updating   Channel A --> Channel B   run #4  <546 ppm rebalance succeeded for 99_892 sats @ 540 ppm 🍀 & moving onto run #5
+Starting   Channel A --> Channel B   run #5 rebalance @  <546 ppm,    492_864 sats left to balance (via bos send)
+Updating   Channel A --> Channel B   run #5  <546 ppm rebalance succeeded for 91_228 sats @ 548 ppm  & moving onto run #6
+Starting   Channel A --> Channel B   run #6 rebalance @  <546 ppm,    401_636 sats left to balance (via bos send)
+Updating   Channel A --> Channel B   run #6  <546 ppm rebalance succeeded for 94_035 sats @ 542 ppm 🍀 & moving onto run #7
+Starting   Channel A --> Channel B   run #7 rebalance @  <546 ppm,    307_601 sats left to balance (via bos send)
+Completed  Channel A --> Channel B   at #7  <546 ppm rebalance succeeded for 90_611 sats @ 541 ppm 🍀 & reached max number of repeats. (5/5 done after 10.0 minutes)
+````
+
 
 ## **📊 Fee Adjustment / 🚧 Max HTLC Sizes per Channel:**
 
