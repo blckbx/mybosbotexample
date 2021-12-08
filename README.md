@@ -42,9 +42,9 @@ ALL TASKS COMPLETED:
 Once rebalancing was successful for the first time, Bosbot fires this route again via `bos send` (if allowed) until balance is reached. Sending less amount due to risk of stuck htlcs. The more discount we achieve, the more emojis (up to 5) will be displayed ;)
 
 ````
-Updating   Channel A --> Channel B   run #1  <555 ppm rebalance succeeded for 197_737 sats @ 100 ppm 🍀🍀🍀🍀🍀🍀 & moving onto run #2
+Updating   Channel A --> Channel B   run #1  <555 ppm rebalance succeeded for 197_737 sats @ 100 ppm 🍀🍀🍀🍀🍀 & moving onto run #2
 Starting   Channel A --> Channel B   run #2 rebalance @  <555 ppm,    781_402 sats left to balance (via bos send)
-Updating   Channel A --> Channel B   run #2  <555 ppm rebalance succeeded for 96_511 sats @ 200 ppm 🍀🍀🍀🍀🍀 & moving onto run #3
+Updating   Channel A --> Channel B   run #2  <555 ppm rebalance succeeded for 96_511 sats @ 200 ppm 🍀🍀🍀🍀 & moving onto run #3
 Starting   Channel A --> Channel B   run #3 rebalance @  <555 ppm,    684_891 sats left to balance (via bos send)
 Updating   Channel A --> Channel B   run #3  <555 ppm rebalance succeeded for 92_135 sats @ 300 ppm 🍀🍀🍀 & moving onto run #4
 Starting   Channel A --> Channel B   run #4 rebalance @  <555 ppm,    592_756 sats left to balance (via bos send)
