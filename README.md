@@ -167,11 +167,11 @@ Edit `index.js` to your needs. At the top of the script set which `MANAGEMENT SW
 
 ## **Workflow:**
 
-1) runBotReconnectCheck()
-2) runUpdateFeesCheck()
-3) runBotRebalanceOrganizer()
-4) runCleaningCheck()
-5) runBot() // repeat every x minutes (`MINUTES_BETWEEN_STEPS`)
+1) `runBotReconnectCheck()`
+2) `runUpdateFeesCheck()`
+3) `runBotRebalanceOrganizer()`
+4) `runCleaningCheck()`
+5) `runBot()` // repeat every x minutes (`MINUTES_BETWEEN_STEPS`)
 
 
 ## **Fine Tuning:**
