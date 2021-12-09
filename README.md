@@ -40,7 +40,7 @@ ALL TASKS COMPLETED:
   0 rebalancing runs done for Channel G --> Channel H 
   0 rebalancing runs done for Channel I --> Channel J 
 ````
-Once rebalancing was successful for the first time, Bosbot fires this route again via `bos send` (if allowed) until balance is reached. Sending less amount due to risk of stuck htlcs. The more discount we achieve, the more emojis (up to 5) will be displayed ;)
+Once rebalancing was successful for the first time, BosBot fires this route again via `bos send` (if allowed) until balance is reached. Sending less amount due to risk of stuck htlcs. The more discount we achieve, the more emojis (up to 5) will be displayed ;)
 
 ````
 Updating   Channel A --> Channel B   run #1  <555 ppm rebalance succeeded for 197_737 sats @ 100 ppm 🍀🍀🍀🍀🍀 & moving onto run #2
@@ -155,13 +155,13 @@ routing rewards: (n: 100) min: 1, 1/4th: 2.5, median: 5.5, avg: 20.5, 3/4th: 21,
 
 Edit `index.js` to your needs. At the top of the script set which `MANAGEMENT SWITCHES` should apply.
 
-`ALLOW_BOS_RECONNECT`: bosbot checks for offline peers and tries to reconnect them within a given time period
+`ALLOW_BOS_RECONNECT`: BosBot checks for offline peers and tries to reconnect them within a given time period
 
-`ADJUST_POLICIES`: bosbot is permitted to adjust outgoing fees and max htlc sizes of your channels
+`ADJUST_POLICIES`: BosBot is permitted to adjust outgoing fees and max htlc sizes of your channels
 
 `ADJUST_POLICIES_FEES` : if false this restricts policy management (setting htlc sizes/fees) to htlc size management only
 
-`ALLOW_REBALANCING`: bosbot rebalances channels which are depleted to local or remote side (500_000 sats off balance with channel size above 2M)
+`ALLOW_REBALANCING`: BosBot rebalances channels which are depleted to local or remote side (500_000 sats off balance with channel size above 2M)
 
 `ALLOW_NODE_RESET`: experimental feature trying to reset services if too many peers seem to be offline (reset Tor or restart node)
 
@@ -170,7 +170,7 @@ Edit `index.js` to your needs. At the top of the script set which `MANAGEMENT SW
 
 ## **Start Commands:**
 
-`npm start` : starts bosbot
+`npm start` : starts BosBot
 
 `npm run start-limiter` : starts htlcLimiter from `\tools\` directory (in a separate process)
 
@@ -181,7 +181,17 @@ Edit `index.js` to your needs. At the top of the script set which `MANAGEMENT SW
 
 `MAX_PPM_ABSOLUTE`: maximum fees
 
-`ROUTING_STOPPING_FEE_RATE`: stop fees for drained channels
+`SAFETY_MARGIN`: proportional safety ppm margin
+
+`SAFETY_MARGIN_FLAT_MAX`: maximum flat safety margin (below this limit: proportional)
+
+`NUDGE_UP`: max size of fee adjustment upward
+
+`NUDGE_DOWN`: max size of fee adjustment downward
+
+`DAYS_FOR_FEE_REDUCTION`: min days of no routing before allowing fee reduction
+
+`ROUTING_STOPPING_FEE_RATE`: ppm fees for drained channels
 
 
 ## **Workflow:**
