@@ -212,7 +212,7 @@ Edit `index.js` to your needs. At the top of the script set which `MANAGEMENT SW
 
 ## **/ TOOLS /**
 
-**Summary:**
+### **Summary:**
 
 Run `node lndsummary` to gather useful data based on your node's statistics (balances, fees, weekly stats for profits and forwards)
 ````
@@ -283,22 +283,22 @@ Run `node lndsummary` to gather useful data based on your node's statistics (bal
     net unbalanced:                   x sats
 ````
 
-**Visualization:**
+### **Visualization:**
 
 Run `node visualize` to start up a webservice hosted at http://localhost:7890 or http://(your-local-address/ip):7890 
 
 ![image](https://github.com/blckbx/mybosbotexample/blob/main/examples/visualize.png)
 Example: For all forwards show earned fees and ppm rates
   
-**Nodes in Path:**
+### **Nodes in Path:**
 
 Running `node nodes_in_path` shows most used nodes in past rebalances. Switches `DAYS_FOR_STATS` (how many days to look back) and `SHOW_PEERS` (show already connected peers) are adjustable. For this script to run some data is needed (run index.js at least once, turn off any management switches).
 
-**Lookup:**
+### **Lookup:**
 
 Running `node lookup <alias>` displays data of a specific alias/peer.
 
-**IsItDown:**
+### **IsItDown:**
 
 Query a node's number of disabled channels to get an overview if a certain node is possibly down or if there are connectivity problems. `node isitdown <alias>`
 
