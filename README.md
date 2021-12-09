@@ -43,19 +43,15 @@ ALL TASKS COMPLETED:
 Once rebalancing was successful for the first time, BosBot fires this route again via `bos send` (if allowed) until balance is reached. Sending less amount due to risk of stuck htlcs. The more discount we achieve, the more emojis (up to 5) will be displayed ;)
 
 ````
-Updating   Channel A --> Channel B   run #1  <555 ppm rebalance succeeded for 197_737 sats @ 100 ppm 🍀🍀🍀🍀🍀 & moving onto run #2
-Starting   Channel A --> Channel B   run #2 rebalance @  <555 ppm,    781_402 sats left to balance (via bos send)
-Updating   Channel A --> Channel B   run #2  <555 ppm rebalance succeeded for 96_511 sats @ 200 ppm 🍀🍀🍀🍀 & moving onto run #3
-Starting   Channel A --> Channel B   run #3 rebalance @  <555 ppm,    684_891 sats left to balance (via bos send)
-Updating   Channel A --> Channel B   run #3  <555 ppm rebalance succeeded for 92_135 sats @ 300 ppm 🍀🍀🍀 & moving onto run #4
-Starting   Channel A --> Channel B   run #4 rebalance @  <555 ppm,    592_756 sats left to balance (via bos send)
-Updating   Channel A --> Channel B   run #4  <555 ppm rebalance succeeded for 99_892 sats @ 400 ppm 🍀🍀 & moving onto run #5
-Starting   Channel A --> Channel B   run #5 rebalance @  <555 ppm,    492_864 sats left to balance (via bos send)
-Updating   Channel A --> Channel B   run #5  <555 ppm rebalance succeeded for 91_228 sats @ 500 ppm 🍀 & moving onto run #6
-Starting   Channel A --> Channel B   run #6 rebalance @  <555 ppm,    401_636 sats left to balance (via bos send)
-Updating   Channel A --> Channel B   run #6  <555 ppm rebalance succeeded for 94_035 sats @ 540 ppm 🍀 & moving onto run #7
-Starting   Channel A --> Channel B   run #7 rebalance @  <555 ppm,    307_601 sats left to balance (via bos send)
-Completed  Channel A --> Channel B   at #7  <555 ppm rebalance succeeded for 90_611 sats @ 540 ppm 🍀 & reached max number of repeats. (5/5 done after 10.0 minutes)
+Updating     Channel A --> Channel B    run #1  <223 ppm rebalance succeeded for 195_314 sats @ 108 ppm 🍀🍀 & moving onto run #2
+Starting     Channel A --> Channel B    run #2 rebalance @  <223 ppm,    342_813 sats left to balance (via bos send)
+Updating     Channel A --> Channel B    run #2  <223 ppm rebalance succeeded for 91_250 sats @ 109 ppm 🍀🍀 & moving onto run #3
+Starting     Channel A --> Channel B    run #3 rebalance @  <223 ppm,    251_563 sats left to balance (via bos send)
+Updating     Channel A --> Channel B    run #3  <223 ppm rebalance succeeded for 93_004 sats @ 107 ppm 🍀🍀 & moving onto run #4
+Starting     Channel A --> Channel B    run #4 rebalance @  <223 ppm,    158_559 sats left to balance (via bos send)
+Updating     Channel A --> Channel B    run #4  <223 ppm rebalance succeeded for 99_097 sats @ 111 ppm 🍀🍀 & moving onto run #5
+Starting     Channel A --> Channel B    run #5 rebalance @  <223 ppm,     59_462 sats left to balance (via bos send)
+Completed    Channel A --> Channel B    at #5  <223 ppm rebalance succeeded for 59_067 sats @ 118 ppm 🍀 & done! 🏆 (3/5 done after 0.8 minutes)
 ````
 
 
