@@ -189,6 +189,8 @@ Edit `index.js` to your needs. At the top of the script set which `MANAGEMENT SW
 
 `ROUTING_STOPPING_FEE_RATE`: ppm fees for drained channels
 
+`MAX_PARALLEL_REBALANCES`: max count of parallel rebalances (high usage of resouces!)
+
 
 ## **Workflow:**
 
