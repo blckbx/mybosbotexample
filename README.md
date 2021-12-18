@@ -103,7 +103,7 @@ htlcLimiter() ✅       8123  amt,      5.736  fee     ~2^2 Channel A -> Channel
 
 ## **🗄 Backup Payments:**
 
-To clean and speed up LND, backing up and removing payments from `channel.db` to external files (json) is a way to do so. Backup files are saved into `\logs\` directory and read on startup.
+To clean and speed up LND, backing up and removing payments (`lncli deletepayments`) from `channel.db` to external files (json) is a way to do so. Backup files are saved into `\logs\` directory and read on startup.
 
 Cleaning DB:
 ````
