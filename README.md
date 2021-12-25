@@ -286,8 +286,8 @@ Run `node lndsummary` to gather useful data based on your node's statistics (bal
 Bosbot collects historical data (channel stats, fee stats, peer stats) per peer that is used for future fee and rebalancing settings. Data is presented in various ways (node summary, fee changes, flow summary). Flow summary lists all peers sorted by score (routed out + routed in sats). Also routings (sats/day and direction), rebalancings (sats/day, direction and used ppm) and lifetime usage are presented. Additionally it states if a node is being used in a 2-WAY-REBALANCE or if IN-direction is disabled.
 ````
       #3  score: 12_395_732 pubkey: xxx
-                     me   299ppm [--2.1M--|--2.9M--] 11ppm   xxx (./peers/x.json)  0.4b F_net--> 🚨 2-WAY-REBALANCE
-                175_747 sats/day <---- routing ----> 5_613_325 sats/day      +1_682 sats/day     (505|300)         #18|#65   
+                     me   299ppm [--2.5M--|--2.5M--] 11ppm   xxx (./peers/x.json)  0.4b F_net--> 🚨 2-WAY-REBALANCE
+                165_747 sats/day <---- routing ----> 5_613_325 sats/day      +1_682 sats/day     (505|300)         #18|#65   
               5_452_034 sats/day <-- rebalancing --> 231_598 sats/day        -108 sats/day       (110|467)        #370|#4    
                 624_426 sats/day <- avg. lifetime -> 658_320 sats/day        22.2x capacity used over ~87 days
                         4.3 days <-- last routed --> 0.0 days ago  last ∆ppm: 482.000 -> 482.000 ppm @ 47.2 days ago
