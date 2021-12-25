@@ -148,7 +148,7 @@ net: 1000
 routing rewards: (n: 100) min: 1, 1/4th: 2.5, median: 5.5, avg: 20.5, 3/4th: 21, max: 210.0
 ````
 
-## **Usage:**
+## **✏ Usage:**
 
 Edit `index.js` to your needs. At the top of the script set which `MANAGEMENT SWITCHES` should apply.
 
@@ -165,14 +165,14 @@ Edit `index.js` to your needs. At the top of the script set which `MANAGEMENT SW
 `ALLOW_DB_CLEANUP`: enables or disables backup payments in jsons and remove from channel database for speed every `DAYS_BETWEEN_DB_CLEANING` days
 
 
-## **Start Commands:**
+## **▶ Start Commands:**
 
 `npm start` : starts BosBot
 
 `npm run start-limiter` : starts htlcLimiter from `\tools\` directory (in a separate process)
 
 
-## **Adjust Settings:**
+## **🎛 Adjust Settings:**
 
 `MIN_PPM_ABSOLUTE`: minimum fees
 
@@ -193,7 +193,7 @@ Edit `index.js` to your needs. At the top of the script set which `MANAGEMENT SW
 `MAX_PARALLEL_REBALANCES`: max count of parallel rebalances (high usage of resouces!)
 
 
-## **Workflow:**
+## **♾ Workflow:**
 
 1) `runBotReconnectCheck()`
 2) `runUpdateFeesCheck()`
@@ -202,16 +202,16 @@ Edit `index.js` to your needs. At the top of the script set which `MANAGEMENT SW
 5) `runBot()` // repeat every x minutes (`MINUTES_BETWEEN_STEPS`)
 
 
-## **Fine Tuning:**
+## **⚙ Fine Tuning:**
 
 1) Setup Telegram Bot: Edit `settings.json` to your needs. Add HTTP API Token (set by BotFather) and chat id (lookup `/id` on Telegram).
 2) Set rules for channels (see settings.json.example): `aliasMatch`, `min_ppm`, `max_ppm`, `no_local_rebalance`, `no_remote_balance`, `max_htlc_sats`, `AVOID_LIST` (nodes to exclude from rebalancing (even in-path))
 
 
 
-## **/ TOOLS /**
+## **/ 🔧 TOOLS /**
 
-### **Summary:**
+### **📜 Summary:**
 
 Run `node lndsummary` to gather useful data based on your node's statistics (balances, fees, weekly stats for profits and forwards)
 ````
@@ -282,22 +282,35 @@ Run `node lndsummary` to gather useful data based on your node's statistics (bal
     net unbalanced:                   x sats
 ````
 
-### **Visualization:**
+### **🏆 Scoring / Data Base:**
+Bosbot collects historical data (channel stats, fee stats, peer stats) per peer that is used for future fee and rebalancing settings. Data is presented in various ways (node summary, fee changes, flow summary). Flow summary lists all peers sorted by score (routed out + routed in sats). Also routings (sats/day and direction), rebalancings (sats/day, direction and used ppm) and lifetime usage are presented. Additionally it states if a node is being used in a 2-WAY-REBALANCE or if IN-direction is disabled.
+````
+      #3  score: 12_395_732 pubkey: xxx
+                     me   299ppm [--2.1M--|--2.9M--] 11ppm   xxx (./peers/x.json)  0.4b F_net--> 🚨 2-WAY-REBALANCE
+                175_747 sats/day <---- routing ----> 5_613_325 sats/day      +1_682 sats/day     (505|300)         #18|#65   
+              5_452_034 sats/day <-- rebalancing --> 231_598 sats/day        -108 sats/day       (110|467)        #370|#4    
+                624_426 sats/day <- avg. lifetime -> 658_320 sats/day        22.2x capacity used over ~87 days
+                        4.3 days <-- last routed --> 0.0 days ago  last ∆ppm: 482.000 -> 482.000 ppm @ 47.2 days ago
+                       rebalances-in (<--) used (ppm): (n: 103) min: 29, 1/4th: 132, median: 173, avg: 188, 3/4th: 269, max: 372
+                       rebalances-in (<--) est. (ppm): (n: 302) min: 29, 1/4th: 266, median: 643, avg: 482, 3/4th: 699, max: 708
+````
+
+### **📈 Visualization:**
 
 Run `node visualize` to start up a webservice hosted at http://localhost:7890 or http://(your-local-address/ip):7890 
 
 ![image](https://github.com/blckbx/mybosbotexample/blob/main/examples/visualize.png)
 Example: For all forwards show earned fees and ppm rates
   
-### **Nodes in Path:**
+### **💎 Nodes in Path:** ###
 
 Running `node nodes_in_path` shows most used nodes in past rebalances. Switches `DAYS_FOR_STATS` (how many days to look back) and `SHOW_PEERS` (show already connected peers) are adjustable. For this script to run some data is needed (run index.js at least once, turn off any management switches).
 
-### **Lookup:**
+### **🔍 Lookup:** ###
 
 Running `node lookup <alias>` displays data of a specific alias/peer.
 
-### **IsItDown:**
+### **🔴 IsItDown:** ###
 
 Query a node's number of disabled channels to get an overview if a certain node is possibly down or if there are connectivity problems. `node isitdown <alias>`
 
