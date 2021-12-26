@@ -1989,11 +1989,13 @@ const runBotReconnect = async ({ quiet = false } = {}) => {
   const peersTotal = peers.length
   const reconnectedPeers = [...reconnected]
   const reconnectedTotal = reconnectedPeers.length || 0
+  const percentReconnected = (peersOffline === 0) ? 0 : ((reconnectedTotal / peersOffline.length) * 100).toFixed(0)
+  
   const message = !majorError
     ? `🔌 Offline Statistics:\n` +
       ` ${peersOffline.length} / ${peersTotal} peers offline (${((peersOffline.length / peersTotal) * 100).toFixed(0)}%):\n-` +
       ` ${peersOffline.map(p => p.alias).join('\n- ') || 'n/a'}\n` +
-      `${reconnectedTotal} / ${peersOffline.length} peers reconnected: \n-`+
+      `${reconnectedTotal} / ${peersOffline.length} peers reconnected (${percentReconnected}%): \n-`+
       ` ${reconnected.map(p => p.alias).join('\n- ') || 'n/a'}\n` +
       `(BoS reconnects every ${MINUTES_BETWEEN_RECONNECTS} minutes).`
     : 'BoS/LND issue detected'
