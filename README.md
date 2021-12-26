@@ -128,12 +128,12 @@ generateSnapshots()
 Checks frequently (`MINUTES_BETWEEN_RECONNECTS`) for offline / inactive peers and tries to reconnect them with `bos reconnect`. Additionally a Telegram message with stats of successful and/or unsuccessful reconnects is being sent:
 ````
 🔌 Offline Statistics:
-3 / x peers offline (y%):
-- Node 1
-- Node 2
-- Node 3
-1 / 3 peers reconnected: 
-- Node 1
+3 / 10 peers offline (30%):
+- Node1
+- Node2
+- Node3
+1 / 3 peers reconnected (33%): 
+- Node1
 (BoS reconnects every x minutes).
 ````
 
