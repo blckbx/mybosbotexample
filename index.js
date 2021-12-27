@@ -1995,7 +1995,7 @@ const runBotReconnect = async ({ quiet = false } = {}) => {
     ? `🔌 Offline Statistics:\n` +
       ` ${peersOffline.length} / ${peersTotal} peers offline (${((peersOffline.length / peersTotal) * 100).toFixed(0)}%):\n-` +
       ` ${peersOffline.map(p => p.alias).join('\n- ') || 'n/a'}\n` +
-      `${reconnectedTotal} / ${peersOffline.length} peers reconnected (${percentReconnected}%): \n-`+
+      ` ${reconnectedTotal} / ${peersOffline.length} peers reconnected (${percentReconnected}%): \n-`+
       ` ${reconnected.map(p => p.alias).join('\n- ') || 'n/a'}\n` +
       `(BoS reconnects every ${MINUTES_BETWEEN_RECONNECTS} minutes).`
     : 'BoS/LND issue detected'
