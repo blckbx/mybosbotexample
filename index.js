@@ -1992,12 +1992,12 @@ const runBotReconnect = async ({ quiet = false } = {}) => {
   const percentReconnected = (reconnectedTotal < 1) ? 0 : ((reconnectedTotal / peersOffline.length) * 100).toFixed(0)
   
   const message = !majorError
-    ? `🔌 Offline Statistics:\n` +
-      ` ${peersOffline.length} / ${peersTotal} peers offline (${((peersOffline.length / peersTotal) * 100).toFixed(0)}%):\n-` +
-      ` ${peersOffline.map(p => p.alias).join('\n- ') || 'n/a'}\n` +
-      ` ${reconnectedTotal} / ${peersOffline.length} peers reconnected (${percentReconnected}%): \n-`+
-      ` ${reconnected.map(p => p.alias).join('\n- ') || 'n/a'}\n` +
-      `(BoS reconnects every ${MINUTES_BETWEEN_RECONNECTS} minutes).`
+    ? `🔌 Offline Statistics:\n` 
+      + ` ${peersOffline.length} / ${peersTotal} peers offline (${((peersOffline.length / peersTotal) * 100).toFixed(0)}%):\n-` 
+      + ` ${peersOffline.map(p => p.alias).join('\n- ') || 'n/a'}\n` 
+      + ` ${reconnectedTotal} / ${peersOffline.length} peers reconnected (${percentReconnected}%): \n-` 
+      + ` ${reconnected.map(p => p.alias).join('\n- ') || 'n/a'}\n` 
+      + `(BoS reconnects every ${MINUTES_BETWEEN_RECONNECTS} minutes).`
     : 'BoS/LND issue detected'
 
   // update user about offline peers just in case
