@@ -1988,8 +1988,8 @@ const runBotReconnect = async ({ quiet = false } = {}) => {
 
   const peersTotal = peers.length
   const reconnectedPeers = [...reconnected]
-  const reconnectedTotal = reconnectedPeers.length || 0
-  const percentReconnected = (peersOffline === 0) ? 0 : ((reconnectedTotal / peersOffline.length) * 100).toFixed(0)
+  const reconnectedTotal = (reconnectedPeers === null) ? 0 : reconnectedPeers.length
+  const percentReconnected = (reconnectedTotal < 1) ? 0 : ((reconnectedTotal / peersOffline.length) * 100).toFixed(0)
   
   const message = !majorError
     ? `🔌 Offline Statistics:\n` +
