@@ -141,7 +141,7 @@ Checks frequently (`MINUTES_BETWEEN_RECONNECTS`) for offline / inactive peers an
 
 On every run BosBot messages some statistics about earned, spent and net sats for the last 7 days. Routing rewards are displayed in min, 1/4th, median, average, 3/4th and max amounts as well as the overall count of routings:
 ````
-🌱 Statistics for 7 days:
+🌱 7d Statistics:
 earned: 2000
 spent: 1000
 net: 1000
