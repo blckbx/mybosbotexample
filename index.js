@@ -1066,19 +1066,19 @@ const updateFees = async () => {
         nIncreased++
 
         // prettier-ignore
-        const feeIncreaseLine = `${getDate()} ${ca(peer.alias).padEnd(30)} ${ppmOld.toFixed(0).padStart(5)} -> ${ppmNewTrunc.toFixed(0).padEnd(6)} ppm ${ppmNewString} ${flowString.padStart(15)} ${flowOutDaysString} days  ${localSats}|${remoteSats}  max htlc: ${byChannelPretty.padStart(11)} ${outflowString}  ↗ ${warnings}`
+        const feeIncreaseLine = `${getDate()} ${ca(peer.alias).padEnd(30)} ${ppmRecord.toFixed(0).padStart(5)} -> ${ppmNewTrunc.toFixed(0).padEnd(6)} ppm ${ppmNewString} ${flowString.padStart(15)} ${flowOutDaysString} days  ${localSats}|${remoteSats}  max htlc: ${byChannelPretty.padStart(11)} ${outflowString}  ↗ ${warnings}`
         feeChangeSummary += feeIncreaseLine
         console.log(feeIncreaseLine)
       } else if (isDecreasing) {
         nDecreased++
 
         // prettier-ignore
-        const feeDecreaseLine = `${getDate()} ${ca(peer.alias).padEnd(30)} ${ppmOld.toFixed(0).padStart(5)} -> ${ppmNewTrunc.toFixed(0).padEnd(6)} ppm ${ppmNewString} ${flowString.padStart(15)} ${flowOutDaysString} days  ${localSats}|${remoteSats}  max htlc: ${byChannelPretty.padStart(11)}  ↘ ${warnings}`
+        const feeDecreaseLine = `${getDate()} ${ca(peer.alias).padEnd(30)} ${ppmRecord.toFixed(0).padStart(5)} -> ${ppmNewTrunc.toFixed(0).padEnd(6)} ppm ${ppmNewString} ${flowString.padStart(15)} ${flowOutDaysString} days  ${localSats}|${remoteSats}  max htlc: ${byChannelPretty.padStart(11)}  ↘ ${warnings}`
         feeChangeSummary += feeDecreaseLine
         console.log(feeDecreaseLine)
       } else {
         // prettier-ignore
-        const feeNoChangeLine = `${getDate()} ${ca(peer.alias).padEnd(30)} ${ppmOld.toFixed(0).padStart(5)}    same   ppm ${ppmNewString} ${flowString.padStart(15)} ${flowOutDaysString} days  ${localSats}|${remoteSats}  max htlc: ${byChannelPretty.padStart(11)} ${outflowString}  ${warnings}`
+        const feeNoChangeLine = `${getDate()} ${ca(peer.alias).padEnd(30)} ${ppmRecord.toFixed(0).padStart(5)}    same   ppm ${ppmNewString} ${flowString.padStart(15)} ${flowOutDaysString} days  ${localSats}|${remoteSats}  max htlc: ${byChannelPretty.padStart(11)} ${outflowString}  ${warnings}`
         feeChangeSummary += feeNoChangeLine
         console.log(feeNoChangeLine)
       }
