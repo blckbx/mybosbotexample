@@ -195,7 +195,11 @@ const runBot = async () => {
 
 // experimental parallel rebalancing function (unsplit, wip)
 const runBotRebalanceOrganizer = async () => {
-  console.boring(`${getDate()} runBotRebalanceOrganizer()`)
+
+  ALLOW_REBALANCING 
+  ? console.boring(`${getDate()} runBotRebalanceOrganizer()`) 
+  : console.boring(`${getDate()} runBotRebalanceOrganizer() - Dry-Running - No Rebalancing`)
+  
   // match up peers
   // high weight lets channels get to pick good peers first (not always to occasionally search for better matches)
   
