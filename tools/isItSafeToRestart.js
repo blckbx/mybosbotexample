@@ -5,7 +5,7 @@ import bos from '../bos.js'
 
 const run = async () => {
   const peers = await bos.peers({}) // undefined for all filters
-  const height = (await bos.call('getHeight'))?.current_block_height
+  const height = (await bos.callAPI('getHeight'))?.current_block_height
   if (!peers) {
     console.log('lnd unreachable')
     return null
