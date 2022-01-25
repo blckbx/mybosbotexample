@@ -319,6 +319,30 @@ $ node isitdown.js alias
 ~X % of Y channels disabled towards alias
 ````
 
+### **♻ IsItSafeToRestart:** ###
+
+Checks for pending HTLCs and gives an estimation if a restart could be potentially risky due to HTLC expiry. `node isItSafeToRestart`
+
+````
+$ node isItSafeToRestart
+current height is xxxxxx
+there are x pending forwards
+of which x are with offline peers
+x are < 6 blocks away from timing out (~60 minutes)
+````
+
+### **🧾 getCapacityFees:** ###
+
+Capacity-weighted median fee rates for your node and your peers. 
+
+````
+$ node getCapacityFees 
+                            me  25%:x      50%:x     75%:x     88%:x     (n:x)
+
+                       Peer 1  25%:100     50%:125     75%:150    88%:200     (n:x)
+                       Peer 2  25%:1       50%:30      75%:60     88%:100     (n:x)
+                       ...
+````
 ___________________________________________________________
 ## original description by legalizemath
 
