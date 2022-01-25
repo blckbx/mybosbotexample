@@ -2,7 +2,7 @@
   Wrapper for balanceofsatoshis installed globally
   Needs node v14+, node -v
   Installed with `npm i -g balanceofsatoshis@10.20.0`
-  Tested with lnd-0.14.1-beta, BoS 11.20.1  
+  Tested with lnd-0.14.1-beta, BoS 11.33.0
   Linked via `npm link balanceofsatoshis`
 */
 
@@ -255,6 +255,7 @@ const send = async (
     // retryAvoidsOnTimeout = 0
     avoid = [],
     isRebalance = true, // double checks in/out peers specified to avoid using same for both
+    is_omitting_message_from = false, // old default to include your key in messages
     retryAvoidsOnTimeout = 0
   },
   log = { details: false, progress: true },
@@ -275,7 +276,8 @@ const send = async (
         ceil((sats * maxFeeRate) / 1e6), // from fee rate rounded up to next sat
         maxFee // from max fee in exact sats
       ),
-      message
+      message,
+      is_omitting_message_from
     }
 
     log?.details && boring(`${getDate()} bos.send() to ${destination}`, JSON.stringify(options))
@@ -522,7 +524,7 @@ const getFees = async (log = false) => {
     return myFees
   } catch (e) {
     console.error(`${getDate()} bos.getFees() aborted:`, e)
-    return undefined
+    return null
   }
 }
 
@@ -826,7 +828,8 @@ const customGetReceivedEvents = async (
 // gets node info and policies for every channel, slightly reformated
 // if peer_key is provided, will only return channels with that peer
 // if public_key not provided, will use this nodes public key
-const getNodeChannels = async ({ public_key, peer_key } = {}) => {
+// byPublicKey will use peer public key as object keys and values will be arrach of all channels to that peer
+const getNodeChannels = async ({ public_key, peer_key, byPublicKey = false } = {}) => {
   try {
     if (!public_key) public_key = (await callAPI('getIdentity')).public_key
     const res = await callAPI('getNode', { public_key, is_omitting_channels: false })
@@ -841,13 +844,25 @@ const getNodeChannels = async ({ public_key, peer_key } = {}) => {
       const outgoingPolicy = channel.policies.find(p => p.public_key === public_key)
       const incomingPolicy = channel.policies.find(p => p.public_key !== public_key)
       const remotePublicKey = incomingPolicy.public_key
-      if (peer_key && peer_key !== remotePublicKey) return edited // skip
-      edited[channel.id] = { ...channel }
-      edited[channel.id].local = outgoingPolicy
-      edited[channel.id].remote = incomingPolicy
-      edited[channel.id].public_key = remotePublicKey
-      delete edited[channel.id].policies
-      return edited
+      if (peer_key && peer_key !== remotePublicKey) return edited // not channel to peer requested if one was
+      const keyToUse = byPublicKey ? remotePublicKey : channel.id
+      if (byPublicKey) {
+        if (!edited[keyToUse]) edited[keyToUse] = []
+        // have to separate different channels to same public key in an array
+        const n = edited[keyToUse].push(channel)
+        edited[keyToUse][n - 1].local = outgoingPolicy
+        edited[keyToUse][n - 1].remote = incomingPolicy
+        edited[keyToUse][n - 1].public_key = remotePublicKey
+        delete edited[keyToUse][n - 1].policies // don't need anymore
+        return edited
+      } else {
+        edited[keyToUse] = channel
+        edited[keyToUse].local = outgoingPolicy
+        edited[keyToUse].remote = incomingPolicy
+        edited[keyToUse].public_key = remotePublicKey
+        delete edited[keyToUse].policies // don't need anymore
+        return edited
+      }
     }, {})
     return betterChannels
   } catch (e) {
@@ -855,6 +870,7 @@ const getNodeChannels = async ({ public_key, peer_key } = {}) => {
     return null
   }
 }
+const getNodePolicy = getNodeChannels // another name
 
 // safer way to set channel policy to avoid default resets, no default values
 // if by_channel_id is specified, looks at channel id keys  for specific settings
@@ -1005,6 +1021,7 @@ const bos = {
   customGetPaymentEvents,
   customGetReceivedEvents,
   getNodeChannels,
+  getNodePolicy,
   setPeerPolicy,
   find,
   initializeAuth
