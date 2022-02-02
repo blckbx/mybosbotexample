@@ -8,7 +8,7 @@ import bos from './bos.js' // my wrapper for bos, needs to be in same folder
 const { min, max, trunc, floor, abs, random, log2, pow, ceil, exp, PI } = Math
 const copy = item => JSON.parse(JSON.stringify(item)) // copy values to new item, useful
 
-// #MANAGEMENT SWITCHES#
+// ## MANAGEMENT SWITCHES
 // allow BOS reconnect
 const ALLOW_BOS_RECONNECT = false
 // allow actually adjusting fees and max htlc sizes and updating peer records
@@ -23,113 +23,75 @@ const ALLOW_NODE_RESET = false
 const ALLOW_DB_CLEANUP = false
 // ######################
 
+// ## GENERAL SETTINGS
 // time to sleep between trying a bot step again
 const MINUTES_BETWEEN_STEPS = 10
-// show rebalancing printouts (very verbose routing info (BoS output))
-const SHOW_REBALANCE_LOG = false
+// how far back to look for routing stats, must be longer than any other DAYS setting
+const DAYS_FOR_STATS = 7
+// channels smaller than this not necessary to balance or adjust fees for usually special cases anyway
+// (maybe use proportional fee policy for them instead) ~2m for now
+const MIN_CHAN_SIZE = 1.9e6
+// smallest amount of sats necessary to consider a side not drained
+const MIN_SATS_PER_SIDE = 1e6
 // how often to move payments from db to backup logs
-const DAYS_BETWEEN_DB_CLEANING = 15
+const DAYS_BETWEEN_DB_CLEANING = 7
 // minimum sats away from 0.5 balance to consider off-balance
 const MIN_SATS_OFF_BALANCE = 500e3
 // unbalanced sats below this can stop (bos rebalance requires >50k)
 const MIN_REBALANCE_SATS = 51e3
+// fraction of peers that need to be offline to restart tor service
+const PEERS_OFFLINE_PERCENT_MAXIMUM = 11
+// hours between running bos reconnect
+const MINUTES_BETWEEN_RECONNECTS = 360
 // array of public key strings to avoid in paths (avoids from settings.json added to it too)
 const AVOID_LIST = []
+// more logs
+const VERBOSE = true
+const DEBUG = true
 
+// ## REBALANCING SETTINGS
+// multiplier for proportional safety ppm margin
+const SAFETY_MARGIN = 1.125
+// maximum flat safety ppm margin (proportional below this value)
+const SAFETY_MARGIN_FLAT_MAX = 200
+// suspect might cause tor issues if too much bandwidth being used
+// setting to 1 makes it try just 1 rebalance at a time
+const MAX_PARALLEL_REBALANCES = 3
 // limit of sats to balance per attempt
 // larger = faster rebalances, less for channels.db to store
 // smaller = can use smaller liquidity/channels for cheaper/easier rebalances
 // bos rebalance does probing + size up htlc strategy
 // (bos rebalance requires >50k)
 const MAX_REBALANCE_SATS = 2e5
-
-// rebalance with faster keysends after bos rebalance works
-// (faster but higher risk of stuck sats so I send less)
+// max minutes to spend per rebalance try
+const MINUTES_FOR_REBALANCE = 5
+// max minutes to spend per keysend try
+const MINUTES_FOR_KEYSEND = 5
+// rebalance with faster keysends after bos rebalance works (faster but higher risk of stuck sats so I send less)
 const USE_KEYSENDS_AFTER_BALANCE = true
 // only use keysends (I use for testing)
 const ONLY_USE_KEYSENDS = false
 // sats to balance via keysends
 const MAX_REBALANCE_SATS_KEYSEND = 1e5
-
-// suspect might cause tor issues if too much bandwidth being used
-// setting to 1 makes it try just 1 rebalance at a time
-const MAX_PARALLEL_REBALANCES = 5
-
+// show rebalancing printouts (very verbose routing info (BoS output))
+const SHOW_REBALANCE_LOG = false
 // would average in earned/routed out fee rate measured in DAYS_FOR_STATS
 // to determine what fee rate to use for rebalance
 const INCLUDE_EARNED_FEE_RATE_FOR_REBALANCE = true
-
-// channels smaller than this not necessary to balance or adjust fees for
-// usually special cases anyway
-// (maybe use proportional fee policy for them instead)
-// ~2m for now
-const MIN_CHAN_SIZE = 1.9e6
-
-// multiplier for proportional safety ppm margin
-const SAFETY_MARGIN = 1.125
-// maximum flat safety ppm margin (proportional below this value)
-const SAFETY_MARGIN_FLAT_MAX = 200
-
-// how often to update fees and max htlc sizes (keep high to minimize network gossip)
-const MINUTES_BETWEEN_FEE_CHANGES = 121
-// max size of fee adjustment upward
-const NUDGE_UP = 0.0314
-// max size of fee adjustment downward
-const NUDGE_DOWN = 0.00314
-// min days of no routing activity before allowing reduction in fees
-const DAYS_FOR_FEE_REDUCTION = 4.2
-
-// minimum ppm ever possible
-const MIN_PPM_ABSOLUTE = 0
-// maximum ppm ever possible
-const MAX_PPM_ABSOLUTE = 799
-// smallest amount of sats necessary to consider a side not drained
-const MIN_SATS_PER_SIDE = 1e6
-// rebalancing fee rates below this aren't considered for rebalancing
-const MIN_FEE_RATE_FOR_REBALANCE = 1
-// max fee rate for rebalancing even if channel earns more
-const MAX_FEE_RATE_FOR_REBALANCE = 599
-// fee rate to stop forwards out of drained channel
-const ROUTING_STOPPING_FEE_RATE = 999
-
-// max minutes to spend per rebalance try
-const MINUTES_FOR_REBALANCE = 7
-// max minutes to spend per keysend try
-const MINUTES_FOR_KEYSEND = 7
-
 // number of times to retry a rebalance on probe timeout while
 // increasing fee for last hop to skip all depleted channels
 // Only applies on specifically ProbeTimeout so unsearched routes remain
 const RETRIES_ON_TIMEOUTS_REBALANCE = 2
 const RETRIES_ON_TIMEOUTS_SEND = 1
-
 // time between retrying same good pair
 const MIN_MINUTES_BETWEEN_SAME_PAIR = (MINUTES_BETWEEN_STEPS + MINUTES_FOR_REBALANCE) * 2
 // max rebalance repeats while successful
 // if realized rebalance rate is > 1/2 max rebalance rate
 // this will just limit repeats when there's no major discounts
 const MAX_BALANCE_REPEATS = 7
-
 // ms to put between each rebalance launch for safety
 const STAGGERED_LAUNCH_MS = 1111
-
-// how much error to use for balance calcs
-// const BALANCE_DEV = 0.1
-
-// how far back to look for routing stats, must be longer than any other DAYS setting
-const DAYS_FOR_STATS = 7
-
-// fraction of peers that need to be offline to restart tor service
-const PEERS_OFFLINE_PERCENT_MAXIMUM = 11
-
-// hours between running bos reconnect - hint: do not run too often. recommendation: 4-6h
-const MINUTES_BETWEEN_RECONNECTS = 360
-
-// show everything
-const VERBOSE = true
-const DEBUG = true
-
-// what to weight random selection by
+// available weighting strategies used for rebalancing
 const WEIGHT_OPTIONS = {}
 // WEIGHT_OPTIONS.FLAT = () => 1
 // 2x more sats from balance is 2x more likely to be selected
@@ -141,22 +103,45 @@ const WEIGHT_OPTIONS = {}
 // WEIGHT_OPTIONS.CHANNEL_SIZE = peer => peer.totalSats
 WEIGHT_OPTIONS.NORMALIZED_NEED = peer =>
   1 - exp(-2 * pow(PI, 2) * pow((peer.outbound_liquidity - 0.5 * peer.capacity) / (peer.capacity - 2 * MIN_SATS_PER_SIDE), 2))
-
+// current weighting strategy
 const WEIGHT = WEIGHT_OPTIONS.NORMALIZED_NEED
 
+// ## FEE SETTINGS
+// how often to update fees and max htlc sizes (keep high to minimize network gossip)
+// also time span of flow to look back at for deciding if and by how much to increase each fee rate
+const MINUTES_BETWEEN_FEE_CHANGES = 121
+// minimum ppm ever possible
+const MIN_PPM_ABSOLUTE = 0
+// maximum ppm ever possible
+const MAX_PPM_ABSOLUTE = 999
+// max size of fee adjustment upward
+const NUDGE_UP = 0.0314
+// max size of fee adjustment downward
+const NUDGE_DOWN = 0.00314
+// min days of no routing activity before allowing reduction in fees
+const DAYS_FOR_FEE_REDUCTION = 4.2
+// rebalancing fee rates below this aren't considered for rebalancing
+const MIN_FEE_RATE_FOR_REBALANCE = 1
+// max fee rate for rebalancing even if channel earns more
+const MAX_FEE_RATE_FOR_REBALANCE = 599
+// fee rate to stop forwards out of drained channel
+const ROUTING_STOPPING_FEE_RATE = 999
+
+// ## FILESYSTEM SETTINGS
 const SNAPSHOTS_PATH = './snapshots'
 const PEERS_LOG_PATH = './peers'
 const LOG_FILES = './logs'
 const TIMERS_PATH = 'timers.json'
 const SETTINGS_PATH = 'settings.json'
 
+// Timers
 const DEFAULT_TIMERS = {
   lastReconnect: 0,
   lastFeeUpdate: 0,
   lastCleaningUpdate: 0
 }
 
-// global node info
+// Global Node Info
 const mynode = {
   scriptStarted: Date.now(),
   my_public_key: '',
