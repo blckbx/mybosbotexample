@@ -122,8 +122,8 @@ const DAYS_FOR_STATS = 7
 // fraction of peers that need to be offline to restart tor service
 const PEERS_OFFLINE_PERCENT_MAXIMUM = 11
 
-// hours between running bos reconnect
-const MINUTES_BETWEEN_RECONNECTS = 60
+// hours between running bos reconnect - hint: do not run too often. recommendation: 4-6h
+const MINUTES_BETWEEN_RECONNECTS = 360
 
 // show everything
 const VERBOSE = true
