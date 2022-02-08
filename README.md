@@ -321,7 +321,7 @@ $ node isitdown.js alias
 
 ### **♻ IsItSafeToRestart:** ###
 
-Checks for pending HTLCs and gives an estimation if a restart could be potentially risky due to HTLC expiry. `node isItSafeToRestart`
+Checks for pending HTLCs and returns an estimation if a restart could be potentially risky due to HTLC expiration. `node isItSafeToRestart`
 
 ````
 $ node isItSafeToRestart
