@@ -7,7 +7,7 @@ Bosbot needs Balance of Satoshi (BoS: https://github.com/alexbosworth/balanceofs
 
 Tested configuration:
 - [LND-0.14.2-beta](https://github.com/lightningnetwork/lnd/releases/tag/v0.14.2-beta)
-- [BoS 11.48.0](https://github.com/alexbosworth/balanceofsatoshis#install) 
+- [BoS 11.52.1](https://github.com/alexbosworth/balanceofsatoshis#install) 
 - [npm 8.1.3](https://gist.github.com/alexbosworth/8fad3d51f9e1ff67995713edf2d20126)
 - [NodeJS 16.13.2](https://nodejs.org)
 
@@ -123,9 +123,9 @@ generateSnapshots()
 4444444444444_paymentHistory.json - is Recent? true
 ````
 
-## **🔌 BoS Reconnect:**
+## **🔌 BoS Reconnect / Simple Reconnect:**
 
-Checks frequently (`MINUTES_BETWEEN_RECONNECTS`) for offline / inactive peers and tries to reconnect them with `bos reconnect`. Additionally a Telegram message with stats of successful and/or unsuccessful reconnects is being sent:
+Checks frequently (`MINUTES_BETWEEN_RECONNECTS` / `MINUTES_BETWEEN_SIMPLE_RECONNECTS`) for offline / inactive peers and tries to reconnect them with `bos reconnect` (6h+ interval recommended) or `simple reconnect`(for the quick reconnect on inactive peers or disabled channels). Additionally a Telegram message with stats of successful and/or unsuccessful reconnects is being sent:
 ````
 🔌 Offline Statistics:
 3 / 10 peers offline (30%):
@@ -135,6 +135,18 @@ Checks frequently (`MINUTES_BETWEEN_RECONNECTS`) for offline / inactive peers an
 1 / 3 peers reconnected (33%): 
 - Node1
 (BoS reconnects every x minutes).
+````
+
+````
+🔌 Simple Reconnect Statistics:
+ 1 / 10 peers offline (1%):
+- Node1 : 45% IN-disabled | 0.5d offline
+- Node2 : 75% IN-disabled | 0.0d offline
+ 0 / 2 peers reconnected (0%): 
+- n/a
+ 0 / 10 (0%) IN-disabled:
+- n/a
+(Simple Reconnect every x minutes).
 ````
 
 ## **🌱 Statistics for 7 days:**
@@ -154,13 +166,13 @@ Edit `index.js` to your needs. At the top of the script set which `MANAGEMENT SW
 
 `ALLOW_BOS_RECONNECT`: BosBot checks for offline peers and tries to reconnect them within a given time period
 
+`ALLOW_SIMPLE_RECONNECT`: BosBot checks for inactive peers and disabled channels and tries to reactivate them quickly via disconnecting and reconnecting
+
 `ADJUST_POLICIES`: BosBot is permitted to adjust outgoing fees and max htlc sizes of your channels
 
 `ADJUST_POLICIES_FEES` : if false this restricts policy management (setting htlc sizes/fees) to htlc size management only
 
 `ALLOW_REBALANCING`: BosBot rebalances channels which are depleted to local or remote side (500_000 sats off balance with channel size above 2M)
-
-`ALLOW_NODE_RESET`: experimental feature trying to reset services if too many peers seem to be offline (reset Tor or restart node)
 
 `ALLOW_DB_CLEANUP`: enables or disables backup payments in jsons and remove from channel database for speed every `DAYS_BETWEEN_DB_CLEANING` days
 
@@ -197,9 +209,10 @@ Edit `index.js` to your needs. At the top of the script set which `MANAGEMENT SW
 
 1) `runBotReconnectCheck()`
 2) `runUpdateFeesCheck()`
-3) `runBotRebalanceOrganizer()`
-4) `runCleaningCheck()`
-5) `runBot()` // repeat every x minutes (`MINUTES_BETWEEN_STEPS`)
+3) `runCleaningCheck()`
+4) `runSimpleReconnect()`
+5) `runBotRebalanceOrganizer()`
+6) `runBot()` // repeat every x minutes (`MINUTES_BETWEEN_STEPS`)
 
 
 ## **⚙ Fine Tuning:**
@@ -312,11 +325,31 @@ Running `node lookup <alias>` displays data of a specific alias/peer.
 
 ### **🔴 IsItDown:** ###
 
-Query a node's number of disabled channels to get an overview if a certain node is possibly down or if there are connectivity problems. `node isitdown <alias>`
+Query any node's number and percentage of disabled channels towards them to get an overview if it is possibly down or if there are connectivity problems. `node isitdown <alias>`
 
 ````
 $ node isitdown.js alias
 ~X % of Y channels disabled towards alias
+````
+
+### **✅ checkChans:** ###
+
+Checks your channels for inactive and IN/OUT-disabled channels to get a quick overview if strange things are going on. `node checkChans`
+
+````
+$ node checkChans.js
+                  alias public_key                                     local remote    iRD isSmall lastReconnected isOffline isInActive inDisabledPeers outDisabledToPeers
+                  Node1 yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy    1.0M | 2.0M       -      -               -  offline  inactive         -   out-off 
+                  Node2 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx    1.0M | 1.0M       -  small   0.3h last rec        -         -         -   out-off 
+
+    total peers:              10
+    offline peers:            1
+    not-active channels:      1
+    not-active and online:    0
+    peers disabling to me:    0
+    me disabling to peers:    2
+    disabled both ways:       0
+
 ````
 
 ### **♻ IsItSafeToRestart:** ###
