@@ -2,7 +2,7 @@
   Wrapper for balanceofsatoshis installed globally
 //  Needs node v14+, node -v
   Installed with `npm i -g balanceofsatoshis@10.20.0`
-  Tested with lnd-0.14.1-beta, BoS 11.33.0
+  Tested with lnd-0.14.1-beta, BoS 11.52.0
   Linked via `npm link balanceofsatoshis`
 */
 
