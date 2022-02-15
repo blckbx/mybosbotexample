@@ -15,11 +15,17 @@ Tested configuration:
 
 BosBot tries to balance imbalanced channels close to 1:1. Imbalance is detected if a channel's liquidity is `MIN_SATS_OFF_BALANCE` away from perfect balance. Especially depleted channels (liquidity < `MIN_SATS_PER_SIDE` on local or remote side) are treated as rebalance candidates. Rebelance amount is set between `MIN_REBALANCE_SATS` (BoS minimum size) and `MAX_REBALANCE_SATS`, preferably exact off-balance amount. BosBot takes inbound fees (peers' fees) and historic data into account and adds a safety margin before rebalancing (cost effectiveness), so ideally future expected income (future forwards) earns some profit. In addition, BosBot rebalances pairs of local-heavy and remote-heavy channels up to `MAX_PARALLEL_REBALANCES` in parallel.
 ````
-  🕺(me)  (448)   3.4M [ ||||-> ]   0.6M (20)       Channel A --> ⚡ --> Channel B     (300)   1.7M [ ||||-> ]   0.4M (462)   🕺(me) 1.00w 
-  🕺(me)  (248)   9.8M [ ||||-> ]   0.2M (1)        Channel C --> ⚡ --> Channel D      (39)   3.9M [ ||||-> ]   0.1M (899)   🕺(me) 1.00w 
-  🕺(me)  (248)   3.4M [ ||||-> ]   0.6M (1)        Channel E --> ⚡ --> Channel F     (250)   3.7M [ ||||-> ]   2.3M (248)   🕺(me) 1.00w 
-  🕺(me)  (149)   1.8M [ ||||-> ]   0.1M (50)       Channel G --> ⚡ --> Channel H      (83)   3.6M [ ||||-> ]   1.4M (248)   🕺(me) 1.00w 💚
-  🕺(me)   (49)   3.4M [ ||||-> ]   0.8M (469)      Channel I --> ⚡ --> Channel J       (1)   1.8M [ ||||-> ]   0.2M (248)   🕺(me) 1.00w 
+5 rebalance matchups from 11 remote-heavy & 2 local-heavy peers
+      sorted with offbalance-weighted randomness of peer =>
+  1 - exp(-2 * pow(PI, 2) * pow((peer.outbound_liquidity - 0.5 * peer.capacity) / (peer.capacity - 2 * MIN_SATS_PER_SIDE), 2))
+      weighting factors: wL = local-offbalance, wR = remote-offbalance, wT = aged weight, wO = outflow weight
+      rebalance ppm's considered: eff = effective, safe = max safe, rush = offbalance emergency
+
+  🕺(me)  (448)   3.4M [ ||||-> ]   0.6M (20)       Channel A --> ⚡ --> Channel B     (300)   1.7M [ ||||-> ]   0.4M (462)   🕺(me) 0.9wL 1.0wR 1.0wT 1.0wO 1.0wE  638eff  509safe  637rush 
+  🕺(me)  (248)   9.8M [ ||||-> ]   0.2M (1)        Channel C --> ⚡ --> Channel D      (39)   3.9M [ ||||-> ]   0.1M (899)   🕺(me) 0.9wL 1.0wR 1.0wT 1.0wO 1.0wE  638eff  509safe  637rush 
+  🕺(me)  (248)   3.4M [ ||||-> ]   0.6M (1)        Channel E --> ⚡ --> Channel F     (250)   3.7M [ ||||-> ]   2.3M (248)   🕺(me) 0.9wL 1.0wR 1.0wT 1.0wO 1.0wE  638eff  509safe  637rush
+  🕺(me)  (149)   1.8M [ ||||-> ]   0.1M (50)       Channel G --> ⚡ --> Channel H      (83)   3.6M [ ||||-> ]   1.4M (248)   🕺(me) 1.0wL 0.8wR 1.0wT 1.0wO 1.0wE  299eff  238safe  298rush 💚
+  🕺(me)   (49)   3.4M [ ||||-> ]   0.8M (469)      Channel I --> ⚡ --> Channel J       (1)   1.8M [ ||||-> ]   0.2M (248)   🕺(me) 0.9wL 1.0wR 1.0wT 1.0wO 1.0wE  638eff  509safe  637rush 
 
 Starting     Channel A --> Channel B                 run #1 rebalance @  <409 ppm,    629_165 sats left to balance (via bos rebalance)
 Stopping     Channel A --> Channel B                 run #1  <409 ppm rebalance failed (Reason: FailedToFindPathBetweenPeers) (1/5 done after 0.0 minutes)
@@ -84,22 +90,22 @@ Channel F     max htlc:   8_388_608
 
 A module to watch and limit numbers of pending htlcs per channel based on fee policies. In parallel BosBot watches for forwarding requests, calculates the htlc's fee and adds the forward to its fee range (currently 2^X). If the number of pending htlcs within a given fee range exceeds the limit, the forward is rejected. For now there are more htlcs allowed for outgoing than incoming direction. Also it acts as a rate limiter for htlcs. 
 ````
-htlcLimiter() ✅       8123  amt,      5.736  fee     ~2^2 Channel A -> Channel B       all: {is_forward: 4, other: 3, out: 5, in: 2}   699469x1484x1 {"1":1,"2":1} -> 699743x2177x1   {"2":1} 
-htlcLimiter() ✅       3353  amt,      1.231  fee     ~2^0 Channel A -> Channel C       all: {is_forward: 6, other: 3, out: 6, in: 3}   699469x1484x1 {"0":1,"1":1,"2":1} -> 694035x2032x1   {"0":1,"1":1} 
-htlcLimiter() ✅       1649  amt,      1.061  fee     ~2^0 Channel A -> Channel D       all: {is_forward: 2, other: 4, out: 4, in: 2}   699469x1484x1 {"0":2} -> 695396x2072x1   {"0":1} 
-htlcLimiter() ❌       1652  amt,      1.062  fee     ~2^0 Channel A -> Channel D       all: {is_forward: 2, other: 4, out: 4, in: 2}   699469x1484x1 {"0":2} -> 695396x2072x1   {"0":1} 
-htlcLimiter() ✅       8123  amt,      5.736  fee     ~2^2 Channel A -> Channel D       all: {is_forward: 4, other: 4, out: 5, in: 3}   699469x1484x1 {"0":2,"2":1} -> 699743x2177x1   {"2":1} 
-htlcLimiter() ✅       1652  amt,      1.196  fee     ~2^0 Channel A -> Channel F       all: {is_forward: 4, other: 4, out: 5, in: 3}   699469x1484x1 {"0":2,"2":1} -> 703229x1986x1   {"0":1} 
-htlcLimiter() ✅       1652  amt,      1.196  fee     ~2^0 Channel A -> Channel F       all: {is_forward: 2, other: 3, out: 4, in: 1}   699469x1484x1 {"0":1} -> 703229x1986x1   {"0":1} 
-htlcLimiter() ✅       8348  amt,      2.470  fee     ~2^1 Channel A -> Channel B       all: {is_forward: 4, other: 3, out: 5, in: 2}   699469x1484x1 {"0":1,"1":1} -> 694035x2032x1   {"1":1} 
-htlcLimiter() ✅       8123  amt,      5.736  fee     ~2^2 Channel A -> Channel C       all: {is_forward: 6, other: 3, out: 6, in: 3}   699469x1484x1 {"0":1,"1":1,"2":1} -> 699743x2177x1   {"2":1} 
-htlcLimiter() ✅       8123  amt,      5.736  fee     ~2^2 Channel A -> Channel C       all: {is_forward: 2, other: 3, out: 4, in: 1}   699469x1484x1 {"2":1} -> 699743x2177x1   {"2":1} 
-htlcLimiter() ✅       8343  amt,      2.469  fee     ~2^1 Channel A -> Channel B       all: {is_forward: 4, other: 3, out: 5, in: 2}   699469x1484x1 {"1":1,"2":1} -> 694035x2032x1   {"1":1} 
-htlcLimiter() ✅       8123  amt,      5.736  fee     ~2^2 Channel A -> Channel D       all: {is_forward: 4, other: 5, out: 7, in: 2}   699469x1484x1 {"1":1,"2":1} -> 699743x2177x1   {"2":1} 
-htlcLimiter() ✅       5022  amt,      1.645  fee     ~2^0 Channel A -> Channel B       all: {is_forward: 6, other: 5, out: 8, in: 3}   699469x1484x1 {"0":1,"1":1,"2":1} -> 694035x2032x1   {"0":1,"1":1} 
-htlcLimiter() ❌       8261  amt,      1.622  fee     ~2^0 Channel A -> Channel E       all: {is_forward: 0, other: 5, out: 5, in: 0}   699469x1484x1 {} -> 709164x1324x1   {"0":3} 
-htlcLimiter() ✅       8261  amt,      2.448  fee     ~2^1 Channel A -> Channel C       all: {is_forward: 2, other: 5, out: 6, in: 1}   699469x1484x1 {"1":1} -> 694035x2032x1   {"1":1} 
-htlcLimiter() ✅       8123  amt,      5.736  fee     ~2^2 Channel A -> Channel B       all: {is_forward: 2, other: 5, out: 6, in: 1}   699469x1484x1 {"2":1} -> 699743x2177x1   {"2":1} 
+htlcLimiter() ✅       8123  amt,      5.736  fee     ~2^2 Channel A -> Channel B       all: {is_forward: 4, other: 3, out: 5, in: 2}   666666x1111x1 {"1":1,"2":1} -> 777777x2222x1   {"2":1} 
+htlcLimiter() ✅       3353  amt,      1.231  fee     ~2^0 Channel A -> Channel C       all: {is_forward: 6, other: 3, out: 6, in: 3}   666666x1111x1 {"0":1,"1":1,"2":1} -> 694035x2032x1   {"0":1,"1":1} 
+htlcLimiter() ✅       1649  amt,      1.061  fee     ~2^0 Channel A -> Channel D       all: {is_forward: 2, other: 4, out: 4, in: 2}   666666x1111x1 {"0":2} -> 777777x2222x1   {"0":1} 
+htlcLimiter() ❌       1652  amt,      1.062  fee     ~2^0 Channel A -> Channel D       all: {is_forward: 2, other: 4, out: 4, in: 2}   666666x1111x1 {"0":2} -> 777777x2222x1   {"0":1} 
+htlcLimiter() ✅       8123  amt,      5.736  fee     ~2^2 Channel A -> Channel D       all: {is_forward: 4, other: 4, out: 5, in: 3}   666666x1111x1 {"0":2,"2":1} -> 777777x2222x1   {"2":1} 
+htlcLimiter() ✅       1652  amt,      1.196  fee     ~2^0 Channel A -> Channel F       all: {is_forward: 4, other: 4, out: 5, in: 3}   666666x1111x1 {"0":2,"2":1} -> 777777x2222x1   {"0":1} 
+htlcLimiter() ✅       1652  amt,      1.196  fee     ~2^0 Channel A -> Channel F       all: {is_forward: 2, other: 3, out: 4, in: 1}   666666x1111x1 {"0":1} -> 777777x2222x1   {"0":1} 
+htlcLimiter() ✅       8348  amt,      2.470  fee     ~2^1 Channel A -> Channel B       all: {is_forward: 4, other: 3, out: 5, in: 2}   666666x1111x1 {"0":1,"1":1} -> 777777x2222x1   {"1":1} 
+htlcLimiter() ✅       8123  amt,      5.736  fee     ~2^2 Channel A -> Channel C       all: {is_forward: 6, other: 3, out: 6, in: 3}   666666x1111x1 {"0":1,"1":1,"2":1} -> 777777x2222x1   {"2":1} 
+htlcLimiter() ✅       8123  amt,      5.736  fee     ~2^2 Channel A -> Channel C       all: {is_forward: 2, other: 3, out: 4, in: 1}   666666x1111x1 {"2":1} -> 777777x2222x1   {"2":1} 
+htlcLimiter() ✅       8343  amt,      2.469  fee     ~2^1 Channel A -> Channel B       all: {is_forward: 4, other: 3, out: 5, in: 2}   666666x1111x1 {"1":1,"2":1} -> 777777x2222x1   {"1":1} 
+htlcLimiter() ✅       8123  amt,      5.736  fee     ~2^2 Channel A -> Channel D       all: {is_forward: 4, other: 5, out: 7, in: 2}   666666x1111x1 {"1":1,"2":1} -> 777777x2222x1   {"2":1} 
+htlcLimiter() ✅       5022  amt,      1.645  fee     ~2^0 Channel A -> Channel B       all: {is_forward: 6, other: 5, out: 8, in: 3}   666666x1111x1 {"0":1,"1":1,"2":1} -> 777777x2222x1   {"0":1,"1":1} 
+htlcLimiter() ❌       8261  amt,      1.622  fee     ~2^0 Channel A -> Channel E       all: {is_forward: 0, other: 5, out: 5, in: 0}   666666x1111x1 {} -> 777777x2222x1   {"0":3} 
+htlcLimiter() ✅       8261  amt,      2.448  fee     ~2^1 Channel A -> Channel C       all: {is_forward: 2, other: 5, out: 6, in: 1}   666666x1111x1 {"1":1} -> 777777x2222x1   {"1":1} 
+htlcLimiter() ✅       8123  amt,      5.736  fee     ~2^2 Channel A -> Channel B       all: {is_forward: 2, other: 5, out: 6, in: 1}   666666x1111x1 {"2":1} -> 777777x2222x1   {"2":1} 
 ````
 
 ## **🗄 Backup Payments:**
@@ -115,12 +121,13 @@ all payments deleted from database
 
 Reading Files:
 ````
-generateSnapshots()
-0 payment records found in db
+generatePeersSnapshots()
+555 payment records found in db
 1111111111111_paymentHistory.json - is Recent? false
 2222222222222_paymentHistory.json - is Recent? false
 3333333333333_paymentHistory.json - is Recent? false
 4444444444444_paymentHistory.json - is Recent? true
+100 payment records used from log file
 ````
 
 ## **🔌 BoS Reconnect / Simple Reconnect:**
@@ -129,9 +136,9 @@ Checks frequently (`MINUTES_BETWEEN_RECONNECTS` / `MINUTES_BETWEEN_SIMPLE_RECONN
 ````
 🔌 Offline Statistics:
 3 / 10 peers offline (30%):
-- Node1
-- Node2
-- Node3
+- Node1 : 45% IN-disabled | 0.5d offline
+- Node2 : 75% IN-disabled | 0.0d offline
+- Node3 : 30% IN-disabled | 1.5d offline
 1 / 3 peers reconnected (33%): 
 - Node1
 (BoS reconnects every x minutes).
@@ -328,7 +335,7 @@ Running `node lookup <alias>` displays data of a specific alias/peer.
 Query any node's number and percentage of disabled channels towards them to get an overview if it is possibly down or if there are connectivity problems. `node isitdown <alias>`
 
 ````
-$ node isitdown.js alias
+$ node isitdown alias
 ~X % of Y channels disabled towards alias
 ````
 
@@ -337,7 +344,7 @@ $ node isitdown.js alias
 Checks your channels for inactive and IN/OUT-disabled channels to get a quick overview if strange things are going on. `node checkChans`
 
 ````
-$ node checkChans.js
+$ node checkChans
                   alias public_key                                     local remote    iRD isSmall lastReconnected isOffline isInActive inDisabledPeers outDisabledToPeers
                   Node1 yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy    1.0M | 2.0M       -      -               -  offline  inactive         -   out-off 
                   Node2 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx    1.0M | 1.0M       -  small   0.3h last rec        -         -         -   out-off 
@@ -357,7 +364,7 @@ $ node checkChans.js
 Checks for pending HTLCs and returns an estimation if a restart could be potentially risky due to HTLC expiration. `node isItSafeToRestart`
 
 ````
-$ node isItSafeToRestart
+$ node isitsafetorestart
 current height is xxxxxx
 there are x pending forwards
 of which x are with offline peers
