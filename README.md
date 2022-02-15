@@ -361,7 +361,7 @@ $ node checkChans
 
 ### **♻ IsItSafeToRestart:** ###
 
-Checks for pending HTLCs and returns an estimation if a restart could be potentially risky due to HTLC expiration. `node isItSafeToRestart`
+Checks for pending HTLCs and returns an estimation if a restart could be potentially risky due to HTLC expiration. `node isitsafetorestart`
 
 ````
 $ node isitsafetorestart
