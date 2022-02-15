@@ -279,7 +279,7 @@ const runSimpleReconnect = async () => {
     // offlinePeerInfoList.push(`${alias} ${icon} : ${percent} | ${daysOffline}`)
     offlinePeerInfoList.push(`${alias} : ${percent} | ${daysOffline}`)
   }
-  const offlinePeerInfo = offlinePeerInfoList.join('\n ') || 'n/a'
+  const offlinePeerInfo = offlinePeerInfoList.join('\n- ') || 'n/a'
 
   const message =
     peers !== null
@@ -2519,7 +2519,7 @@ const runBotReconnect = async () => {
     // offlinePeerInfoList.push(`${alias} ${icon} : ${percent}% IN-disabled | ${daysOffline}`)
     offlinePeerInfoList.push(`${alias} : ${percent}% IN-disabled | ${daysOffline}`)
   }
-  const offlinePeerInfo = offlinePeerInfoList.join('\n ') || 'n/a'
+  const offlinePeerInfo = offlinePeerInfoList.join('\n- ') || 'n/a'
   
   const message = !majorError
     ? `🔌 Offline Statistics (BoS Reconnect):\n` 
