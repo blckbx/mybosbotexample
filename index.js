@@ -288,7 +288,7 @@ const runSimpleReconnect = async () => {
     + ` ${offlinePeerInfo}\n` 
     + ` ${finalReconnected.length} / ${finalOffline.length} peers reconnected (${((finalReconnected.length / finalOffline.length) * 100).toFixed(0)}%): \n-` 
     + ` ${finalReconnected.map(p => p.alias).join('\n- ') || 'n/a'}\n`
-    + ` ${peersDisabledToMe.length} / ${peersTotal} (${((peersDisabledToMe.length / peersTotal) * 100).toFixed(0)}%) IN-disabled:\n-` 
+    + ` ${peersDisabledToMe.length} / ${peersTotal} IN-disabled (${((peersDisabledToMe.length / peersTotal) * 100).toFixed(0)}%):\n-` 
     + ` ${peersDisabledToMe.map(p => p.alias).join('\n- ') || 'n/a'}\n`
     + `(Simple Reconnect every ${MINUTES_BETWEEN_SIMPLE_RECONNECTS} minutes).`
       : 'bos/lnd issue detected'
@@ -2527,7 +2527,7 @@ const runBotReconnect = async () => {
       + ` ${offlinePeerInfo}\n` 
       + ` ${reconnected.length} / ${offline.length} peers reconnected (${((reconnected.length / offline.length) * 100).toFixed(0)}%): \n-` 
       + ` ${reconnected.map(p => p.alias).join('\n- ') || 'n/a'}\n`
-      + ` ${peersDisabledToMe.length} / ${peersTotal} (${((peersDisabledToMe.length / peersTotal) * 100).toFixed(0)}%) IN-disabled:\n-`
+      + ` ${peersDisabledToMe.length} / ${peersTotal} IN-disabled (${((peersDisabledToMe.length / peersTotal) * 100).toFixed(0)}%):\n-`
       + ` ${peersDisabledToMe.map(p => p.alias).join('\n- ') || 'n/a'}\n` 
       + `(BoS reconnects every ${MINUTES_BETWEEN_RECONNECTS} minutes).`
     : 'BoS/LND issue detected'
