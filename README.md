@@ -170,16 +170,14 @@ net: 1000
 routing rewards: (n: 100) min: 1, 1/4th: 2.5, median: 5.5, avg: 20.5, 3/4th: 21, max: 210.0
 ````
 
-## **✏ Usage:**
+## **✏ Usage / Management Switches:**
 
 Copy `.env` file to `.env.local` and edit settings to your needs. At the top of the file set which `MANAGEMENT SWITCHES` should apply.
 
 `ALLOW_BOS_RECONNECT`: BosBot checks for offline peers and tries to reconnect them within a given time period
-
 `ALLOW_SIMPLE_RECONNECT`: BosBot checks for inactive peers and disabled channels and tries to reactivate them quickly via disconnecting and reconnecting
 
 `ADJUST_POLICIES`: BosBot is permitted to adjust outgoing fees and max htlc sizes of your channels
-
 `ADJUST_POLICIES_FEES` : if false this restricts policy management (setting htlc sizes/fees) to htlc size management only
 
 `ALLOW_REBALANCING`: BosBot rebalances channels which are depleted to local or remote side (500_000 sats off balance with channel size above 2M)
@@ -190,28 +188,22 @@ Copy `.env` file to `.env.local` and edit settings to your needs. At the top of 
 ## **▶ Start Commands:**
 
 `npm start` : starts BosBot
-
 `npm run start-limiter` : starts htlcLimiter from `\tools\` directory (in a separate process)
 
 
-## **🎛 Adjust Settings:**
+## **🎛 Adjust Important Settings:**
 
 `MIN_PPM_ABSOLUTE`: minimum fees
-
 `MAX_PPM_ABSOLUTE`: maximum fees
 
 `SAFETY_MARGIN`: proportional safety ppm margin
-
 `SAFETY_MARGIN_FLAT_MAX`: maximum flat safety margin (below this limit: proportional)
 
 `NUDGE_UP`: max size of fee adjustment upward
-
 `NUDGE_DOWN`: max size of fee adjustment downward
 
 `DAYS_FOR_FEE_REDUCTION`: min days of no routing before allowing fee reduction
-
 `ROUTING_STOPPING_FEE_RATE`: ppm fees for drained channels
-
 `MAX_PARALLEL_REBALANCES`: max count of parallel rebalances (high usage of resouces!)
 
 
