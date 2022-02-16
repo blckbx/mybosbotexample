@@ -11,6 +11,54 @@ Tested configuration:
 - [npm 8.1.3](https://gist.github.com/alexbosworth/8fad3d51f9e1ff67995713edf2d20126)
 - [NodeJS 16.13.2](https://nodejs.org)
 
+
+## **✏ Usage / Management Switches:**
+
+Copy `.env` file to `.env.local` and edit settings to your needs. At the top of the file set which `MANAGEMENT SWITCHES` should be applied.
+
+- `ALLOW_BOS_RECONNECT`: BosBot checks for offline peers and tries to reconnect them within a given time period
+- `ALLOW_SIMPLE_RECONNECT`: BosBot checks for inactive peers and disabled channels and tries to reactivate them quickly via disconnecting and reconnecting
+- `ADJUST_POLICIES`: BosBot is permitted to adjust outgoing fees and max htlc sizes of your channels
+- `ADJUST_POLICIES_FEES` : if false this restricts policy management (setting htlc sizes/fees) to htlc size management only
+- `ALLOW_REBALANCING`: BosBot rebalances channels which are depleted to local or remote side (500_000 sats off balance with channel size above 2M)
+- `ALLOW_DB_CLEANUP`: enables or disables backup payments in jsons and remove from channel database for speed every `DAYS_BETWEEN_DB_CLEANING` days
+
+
+## **▶ Start Commands:**
+
+- `npm start` : starts BosBot
+- `npm run start-limiter` : starts htlcLimiter from `\tools\` directory (in a separate process)
+
+
+## **🎛 Adjust Important Settings:**
+
+- `MIN_PPM_ABSOLUTE`: minimum fees
+- `MAX_PPM_ABSOLUTE`: maximum fees
+- `SAFETY_MARGIN`: proportional safety ppm margin
+- `SAFETY_MARGIN_FLAT_MAX`: maximum flat safety margin (below this limit: proportional)
+- `NUDGE_UP`: max size of fee adjustment upward
+- `NUDGE_DOWN`: max size of fee adjustment downward
+- `DAYS_FOR_FEE_REDUCTION`: min days of no routing before allowing fee reduction
+- `ROUTING_STOPPING_FEE_RATE`: ppm fees for drained channels
+- `MAX_PARALLEL_REBALANCES`: max count of parallel rebalances (high usage of resouces!)
+
+
+## **♾ Workflow:**
+
+1) `runBotReconnectCheck()`
+2) `runUpdateFeesCheck()`
+3) `runCleaningCheck()`
+4) `runSimpleReconnect()`
+5) `runBotRebalanceOrganizer()`
+6) `runBot()` // repeat every x minutes (`MINUTES_BETWEEN_STEPS`)
+
+
+## **⚙ Fine Tuning:**
+
+1) Setup Telegram Bot: Edit `settings.json` to your needs. Add HTTP API Token (set by BotFather) and chat id (lookup `/id` on Telegram).
+2) Set rules for channels (see settings.json.example): `aliasMatch`, `min_ppm`, `max_ppm`, `no_local_rebalance`, `no_remote_balance`, `max_htlc_sats`, `AVOID_LIST` (nodes to exclude from rebalancing (even in-path))
+
+
 ## **🧬 Rebalancing:**
 
 BosBot tries to balance imbalanced channels close to 1:1. Imbalance is detected if a channel's liquidity is `MIN_SATS_OFF_BALANCE` away from perfect balance. Especially depleted channels (liquidity < `MIN_SATS_PER_SIDE` on local or remote side) are treated as rebalance candidates. Rebelance amount is set between `MIN_REBALANCE_SATS` (BoS minimum size) and `MAX_REBALANCE_SATS`, preferably exact off-balance amount. BosBot takes inbound fees (peers' fees) and historic data into account and adds a safety margin before rebalancing (cost effectiveness), so ideally future expected income (future forwards) earns some profit. In addition, BosBot rebalances pairs of local-heavy and remote-heavy channels up to `MAX_PARALLEL_REBALANCES` in parallel.
@@ -86,6 +134,7 @@ Channel E     max htlc:   4_194_304
 Channel F     max htlc:   8_388_608
 ````
 
+
 ## **🛡 HTLC Limiter / Firewall:**
 
 A module to watch and limit numbers of pending htlcs per channel based on fee policies. In parallel BosBot watches for forwarding requests, calculates the htlc's fee and adds the forward to its fee range (currently 2^X). If the number of pending htlcs within a given fee range exceeds the limit, the forward is rejected. For now there are more htlcs allowed for outgoing than incoming direction. Also it acts as a rate limiter for htlcs. 
@@ -108,6 +157,7 @@ htlcLimiter() ✅       8261  amt,      2.448  fee     ~2^1 Channel A -> Channel
 htlcLimiter() ✅       8123  amt,      5.736  fee     ~2^2 Channel A -> Channel B       all: {is_forward: 2, other: 5, out: 6, in: 1}   666666x1111x1 {"2":1} -> 777777x2222x1   {"2":1} 
 ````
 
+
 ## **🗄 Backup Payments:**
 
 To clean and speed up LND, backing up and removing payments (`lncli deletepayments`) from `channel.db` to external files (json) is a way to do so. Backup files are saved into `\logs\` directory and read on startup.
@@ -129,6 +179,7 @@ generatePeersSnapshots()
 4444444444444_paymentHistory.json - is Recent? true
 100 payment records used from log file
 ````
+
 
 ## **🔌 BoS Reconnect / Simple Reconnect:**
 
@@ -159,6 +210,7 @@ Checks frequently (`MINUTES_BETWEEN_RECONNECTS` / `MINUTES_BETWEEN_SIMPLE_RECONN
 (Simple Reconnect every x minutes).
 ````
 
+
 ## **🌱 Statistics for 7 days:**
 
 On every run BosBot messages some statistics about earned, spent and net sats for the last 7 days. Routing rewards are displayed in min, 1/4th, median, average, 3/4th and max amounts as well as the overall count of routings:
@@ -169,67 +221,6 @@ spent: 1000
 net: 1000
 routing rewards: (n: 100) min: 1, 1/4th: 2.5, median: 5.5, avg: 20.5, 3/4th: 21, max: 210.0
 ````
-
-## **✏ Usage / Management Switches:**
-
-Copy `.env` file to `.env.local` and edit settings to your needs. At the top of the file set which `MANAGEMENT SWITCHES` should apply.
-
-`ALLOW_BOS_RECONNECT`: BosBot checks for offline peers and tries to reconnect them within a given time period
-
-`ALLOW_SIMPLE_RECONNECT`: BosBot checks for inactive peers and disabled channels and tries to reactivate them quickly via disconnecting and reconnecting
-
-`ADJUST_POLICIES`: BosBot is permitted to adjust outgoing fees and max htlc sizes of your channels
-
-`ADJUST_POLICIES_FEES` : if false this restricts policy management (setting htlc sizes/fees) to htlc size management only
-
-`ALLOW_REBALANCING`: BosBot rebalances channels which are depleted to local or remote side (500_000 sats off balance with channel size above 2M)
-
-`ALLOW_DB_CLEANUP`: enables or disables backup payments in jsons and remove from channel database for speed every `DAYS_BETWEEN_DB_CLEANING` days
-
-
-## **▶ Start Commands:**
-
-`npm start` : starts BosBot
-
-`npm run start-limiter` : starts htlcLimiter from `\tools\` directory (in a separate process)
-
-
-## **🎛 Adjust Important Settings:**
-
-`MIN_PPM_ABSOLUTE`: minimum fees
-
-`MAX_PPM_ABSOLUTE`: maximum fees
-
-`SAFETY_MARGIN`: proportional safety ppm margin
-
-`SAFETY_MARGIN_FLAT_MAX`: maximum flat safety margin (below this limit: proportional)
-
-`NUDGE_UP`: max size of fee adjustment upward
-
-`NUDGE_DOWN`: max size of fee adjustment downward
-
-`DAYS_FOR_FEE_REDUCTION`: min days of no routing before allowing fee reduction
-
-`ROUTING_STOPPING_FEE_RATE`: ppm fees for drained channels
-
-`MAX_PARALLEL_REBALANCES`: max count of parallel rebalances (high usage of resouces!)
-
-
-## **♾ Workflow:**
-
-1) `runBotReconnectCheck()`
-2) `runUpdateFeesCheck()`
-3) `runCleaningCheck()`
-4) `runSimpleReconnect()`
-5) `runBotRebalanceOrganizer()`
-6) `runBot()` // repeat every x minutes (`MINUTES_BETWEEN_STEPS`)
-
-
-## **⚙ Fine Tuning:**
-
-1) Setup Telegram Bot: Edit `settings.json` to your needs. Add HTTP API Token (set by BotFather) and chat id (lookup `/id` on Telegram).
-2) Set rules for channels (see settings.json.example): `aliasMatch`, `min_ppm`, `max_ppm`, `no_local_rebalance`, `no_remote_balance`, `max_htlc_sats`, `AVOID_LIST` (nodes to exclude from rebalancing (even in-path))
-
 
 
 ## **/ 🔧 TOOLS /**
@@ -305,6 +296,7 @@ Run `node lndsummary` to gather useful data based on your node's statistics (bal
     net unbalanced:                   x sats
 ````
 
+
 ### **🏆 Scoring / Data Base:**
 Bosbot collects historical data (channel stats, fee stats, peer stats) per peer that is used for future fee and rebalancing settings. Data is presented in various ways (node summary, fee changes, flow summary). Flow summary lists all peers sorted by score (routed out + routed in sats). Also routings (sats/day and direction), rebalancings (sats/day, direction and used ppm) and lifetime usage are presented. Additionally it states if a node is being used in a 2-WAY-REBALANCE or if IN-direction is disabled.
 ````
@@ -318,6 +310,7 @@ Bosbot collects historical data (channel stats, fee stats, peer stats) per peer 
       rebalances-in (<--) est. (ppm): (n: 302) min: 29, 1/4th: 266, median: 643, avg: 482, 3/4th: 699, max: 708
 ````
 
+
 ### **📈 Visualization:**
 
 Run `node visualize` to start up a webservice hosted at http://localhost:7890 or http://(your-local-address/ip):7890 
@@ -325,13 +318,16 @@ Run `node visualize` to start up a webservice hosted at http://localhost:7890 or
 ![image](https://github.com/blckbx/mybosbotexample/blob/main/examples/visualize.png)
 Example: For all forwards show earned fees and ppm rates
   
+ 
 ### **💎 Nodes in Path:** ###
 
 Running `node nodes_in_path` shows most used nodes in past rebalances. Switches `DAYS_FOR_STATS` (how many days to look back) and `SHOW_PEERS` (show already connected peers) are adjustable. For this script to run some data is needed (run index.js at least once, turn off any management switches).
 
+
 ### **🔍 Lookup:** ###
 
 Running `node lookup <alias>` displays data of a specific alias/peer.
+
 
 ### **🔴 IsItDown:** ###
 
@@ -341,6 +337,7 @@ Query any node's number and percentage of disabled channels towards them to get 
 $ node isitdown alias
 ~X % of Y channels disabled towards alias
 ````
+
 
 ### **✅ checkChans:** ###
 
@@ -362,6 +359,7 @@ $ node checkChans
 
 ````
 
+
 ### **♻ IsItSafeToRestart:** ###
 
 Checks for pending HTLCs and returns an estimation if a restart could be potentially risky due to HTLC expiration. `node isitsafetorestart`
@@ -373,6 +371,7 @@ there are x pending forwards
 of which x are with offline peers
 x are < 6 blocks away from timing out (~60 minutes)
 ````
+
 
 ### **🧾 getCapacityFees:** ###
 
@@ -386,6 +385,8 @@ $ node getCapacityFees
                        Peer 2  25%:1       50%:30      75%:60     88%:100     (n:x)
                        ...
 ````
+
+
 ___________________________________________________________
 ## original description by legalizemath
 
