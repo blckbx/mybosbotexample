@@ -908,23 +908,27 @@ const runBotRebalanceOrganizer = async () => {
     await sleep(STAGGERED_LAUNCH_MS, { quiet: true })
   }
 
-  console.log(
-    `${getDate()}\n\n    All ${rebalanceTasks.length} parallel rebalances launched!\n`
-  )
+  if(rebalanceTasks.length > 0) {
+    console.log(
+      `${getDate()}\n\n    runBotRebalanceOrganizer(): All ${rebalanceTasks.length} parallel rebalances launched!\n`
+    )
 
-  // now we wait until every rebalance task is done & returns a value
-  const rebalanceResults = await Promise.all(rebalanceTasks)
-  rebalanceResults.sort((a, b) => b.run - a.run)
-  console.log(
-    `${getDate()} ALL TASKS COMPLETED:\n` +
-      rebalanceResults
-        .map(
-          r =>
-            `${(r.run - 1).toFixed(0).padStart(3)} rebalancing runs done for` +
-            ` ${ca(r.localHeavy.alias)} --> ${ca(r.remoteHeavy.alias)} `
-        )
-        .join('\n')
-  )
+    // now we wait until every rebalance task is done & returns a value
+    const rebalanceResults = await Promise.all(rebalanceTasks)
+    rebalanceResults.sort((a, b) => b.run - a.run)
+    console.log(
+      `${getDate()} ALL TASKS COMPLETED:\n` +
+        rebalanceResults
+          .map(
+            r =>
+              `${(r.run - 1).toFixed(0).padStart(3)} rebalancing runs done for` +
+              ` ${ca(r.localHeavy.alias)} --> ${ca(r.remoteHeavy.alias)} `
+          )
+          .join('\n')
+    )
+  } else {
+    console.log(`${getDate()}\n\n    runBotRebalanceOrganizer(): Nothing to be done.\n`)
+  }
 }
 
 // look into previous rebalances and look if any of peerOptions work
