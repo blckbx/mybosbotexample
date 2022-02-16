@@ -6,9 +6,11 @@
   "type": "module",
   "scripts": {
     "start": "npm link balanceofsatoshis && node --optimize_for_size --max_old_space_size=400 --expose_gc index.js",
-    "start-limiter": "npm link balanceofsatoshis && node --optimize_for_size --max_old_space_size=200 --expose_gc tools/htlcLimiter.js"
+    "start-limiter": "node --optimize_for_size --max_old_space_size=200 --expose_gc tools/htlcLimiter.js | tee -a limiter.log"
   },
   "author": "",
   "license": "MIT license",
-  "dependencies": {}
+  "dependencies": {
+  	"dotenv": "^16.0.0"
+  }
 }
