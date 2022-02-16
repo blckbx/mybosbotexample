@@ -285,13 +285,13 @@ const runSimpleReconnect = async () => {
     peers !== null
     ? `🔌 Simple Reconnect Statistics:\n` 
     + ` ${finalOffline.length} / ${peersTotal} peers offline (${((finalOffline.length / peersTotal) * 100).toFixed(0)}%):\n-` 
-    + ` ${offlinePeerInfo}\n` 
-    + ` ${finalReconnected.length} / ${finalOffline.length} peers reconnected (${((finalReconnected.length / finalOffline.length) * 100).toFixed(0)}%): \n-` 
-    + ` ${finalReconnected.map(p => p.alias).join('\n- ') || 'n/a'}\n`
-    + ` ${peersDisabledToMe.length} / ${peersTotal} IN-disabled (${((peersDisabledToMe.length / peersTotal) * 100).toFixed(0)}%):\n-` 
-    + ` ${peersDisabledToMe.map(p => p.alias).join('\n- ') || 'n/a'}\n`
+    + ` ${offlinePeerInfoList.join('\n- ') || 'n/a'}\n`
+    + ` ${finalReconnected.length} peers reconnected: \n-` 
+    + ` ${finalReconnected.map(pk => ca(pkToAlias[pk]) || pk.slice(0, 20)).join(', ') || 'n/a'}\n`
+    + ` ${peersDisabledToMe.length} IN-disabled (${((peersDisabledToMe.length / peersTotal) * 100).toFixed(0)}%):\n-` 
+    + ` ${peersDisabledToMe.map(pk => ca(pkToAlias[pk]) || pk.slice(0, 20)).join(', ') || 'n/a'}\n`
     + `(Simple Reconnect every ${MINUTES_BETWEEN_SIMPLE_RECONNECTS} minutes).`
-      : 'bos/lnd issue detected'
+      : 'BoS/LND issue detected'
 
   // update user about offline peers just in case
   console.log(`${getDate()} ${message.replaceAll(/<\/?.>/g, '')}`)
@@ -2524,8 +2524,8 @@ const runBotReconnect = async () => {
   const message = !majorError
     ? `🔌 Offline Statistics (BoS Reconnect):\n` 
       + ` ${offline.length} / ${peersTotal} peers offline (${((offline.length / peersTotal) * 100).toFixed(0)}%):\n-` 
-      + ` ${offlinePeerInfo}\n` 
-      + ` ${reconnected.length} / ${offline.length} peers reconnected (${((reconnected.length / offline.length) * 100).toFixed(0)}%): \n-` 
+      + ` ${offlinePeerInfoList.join('\n- ') || 'n/a'}\n` 
+      + ` ${reconnected.length} / ${offline.length} peers reconnected: \n-` 
       + ` ${reconnected.map(p => p.alias).join('\n- ') || 'n/a'}\n`
       + ` ${peersDisabledToMe.length} / ${peersTotal} IN-disabled (${((peersDisabledToMe.length / peersTotal) * 100).toFixed(0)}%):\n-`
       + ` ${peersDisabledToMe.map(p => p.alias).join('\n- ') || 'n/a'}\n` 
