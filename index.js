@@ -287,9 +287,9 @@ const runSimpleReconnect = async () => {
     + ` ${finalOffline.length} / ${peersTotal} peers offline (${((finalOffline.length / peersTotal) * 100).toFixed(0)}%):\n-` 
     + ` ${offlinePeerInfoList.join('\n- ') || 'n/a'}\n`
     + ` ${finalReconnected.length} peers reconnected: \n-` 
-    + ` ${finalReconnected.map(pk => ca(pkToAlias[pk]) || pk.slice(0, 20)).join(', ') || 'n/a'}\n`
+    + ` ${finalReconnected.map(pk => ca(pkToAlias[pk]) || pk.slice(0, 20)).join('\n- ') || 'n/a'}\n`
     + ` ${peersDisabledToMe.length} IN-disabled (${((peersDisabledToMe.length / peersTotal) * 100).toFixed(0)}%):\n-` 
-    + ` ${peersDisabledToMe.map(pk => ca(pkToAlias[pk]) || pk.slice(0, 20)).join(', ') || 'n/a'}\n`
+    + ` ${peersDisabledToMe.map(pk => ca(pkToAlias[pk]) || pk.slice(0, 20)).join('\n- ') || 'n/a'}\n`
     + `(Simple Reconnect every ${MINUTES_BETWEEN_SIMPLE_RECONNECTS} minutes).`
       : 'BoS/LND issue detected'
 
