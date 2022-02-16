@@ -6,8 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "npm link balanceofsatoshis && node --optimize_for_size --max_old_space_size=400 --expose_gc index.js",
-    "start-all": "sudo -b node resetHandler > /dev/null 2>&1 && sudo -k && npm run start",
-    "start-limiter": "node --optimize_for_size --max_old_space_size=200 --expose_gc tools/htlcLimiter.js"
+    "start-limiter": "npm link balanceofsatoshis && node --optimize_for_size --max_old_space_size=200 --expose_gc tools/htlcLimiter.js"
   },
   "author": "",
   "license": "MIT license",
