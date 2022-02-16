@@ -172,7 +172,7 @@ routing rewards: (n: 100) min: 1, 1/4th: 2.5, median: 5.5, avg: 20.5, 3/4th: 21,
 
 ## **✏ Usage:**
 
-Edit `index.js` to your needs. At the top of the script set which `MANAGEMENT SWITCHES` should apply.
+Copy `.env` file to `.env.local` and edit settings to your needs. At the top of the file set which `MANAGEMENT SWITCHES` should apply.
 
 `ALLOW_BOS_RECONNECT`: BosBot checks for offline peers and tries to reconnect them within a given time period
 
