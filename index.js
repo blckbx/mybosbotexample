@@ -1,108 +1,131 @@
 // NOT SAFE TO RUN
 I KNOW WHAT I AM DOING
 
-
 import fs from 'fs' // comes with nodejs, to read/write log files
 import dns from 'dns' // comes with nodejs, to check if there's internet access
 import bos from './bos.js' // my wrapper for bos, needs to be in same folder
+import path from 'path';
+import dotenv from 'dotenv';
 
 const { min, max, trunc, floor, abs, random, log2, pow, ceil, exp, PI } = Math // useful Math
 const copy = item => JSON.parse(JSON.stringify(item)) // copy values to new item, useful
 
+const env = process.env
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+
 // ## MANAGEMENT SWITCHES
 // allow BOS reconnect
-const ALLOW_BOS_RECONNECT = false
+const ALLOW_BOS_RECONNECT = env.ALLOW_BOS_RECONNECT === 'false' ? false : true
 // allow actually adjusting fees and max htlc sizes and updating peer records
 // if false it will just print out what would've been to terminal & _feeChanges.txt
-const ADJUST_POLICIES = false // set max htlc & fees
-const ADJUST_POLICIES_FEES = false // = false : set only max htlcs (subset of ALLOW_POLICIES: true)
+const ADJUST_POLICIES = env.ADJUST_POLICIES === 'false' ? false : true // set max htlc & fees
+const ADJUST_POLICIES_FEES = env.ADJUST_POLICIES_FEES === 'false' ? false : true // = false : set only max htlcs (subset of ALLOW_POLICIES: true)
 // allow rebalancing (false = dryrun)
-const ALLOW_REBALANCING = false
+const ALLOW_REBALANCING = env.ALLOW_REBALANCING === 'false' ? false : true
 // try simple reconnecting to inactive or offline peers (safer to run frequently)
-const ALLOW_SIMPLE_RECONNECT = false
+const ALLOW_SIMPLE_RECONNECT = env.ALLOW_SIMPLE_RECONNECT === 'false' ? false : true
 // backup payments in jsons & then remove from database for speed
-const ALLOW_DB_CLEANUP = false
+const ALLOW_DB_CLEANUP = env.ALLOW_DB_CLEANUP === 'false' ? false : true
 // ######################
 
 // ## GENERAL SETTINGS
 // time to sleep between trying a bot step again
-const MINUTES_BETWEEN_STEPS = 10
+const MINUTES_BETWEEN_STEPS = parseFloat(env.MINUTES_BETWEEN_STEPS) || 2
 // how far back to look for routing stats, must be longer than any other DAYS setting
-const DAYS_FOR_STATS = 7
+const DAYS_FOR_STATS = parseFloat(env.DAYS_FOR_STATS) || 7
 // channels smaller than this not necessary to balance or adjust fees for usually special cases anyway
 // (maybe use proportional fee policy for them instead) ~2m for now
-const MIN_CHAN_SIZE = 1.9e6
+const MIN_CHAN_SIZE = parseInt(env.MIN_CHAN_SIZE) || 1.9e6
 // smallest amount of sats necessary to consider a side not drained
-const MIN_SATS_PER_SIDE = 1e6
+const MIN_SATS_PER_SIDE = parseInt(env.MIN_SATS_PER_SIDE) || 500e3 //1e6
 // local sats below this means channel is drained
 const SATS_PER_SIDE_DRAINED_LIMIT = MIN_SATS_PER_SIDE * 0.25
 // how often to move payments from db to backup logs
-const DAYS_BETWEEN_DB_CLEANING = 7
+const DAYS_BETWEEN_DB_CLEANING = parseFloat(env.DAYS_BETWEEN_DB_CLEANING) || 7
 // minimum sats away from 0.5 balance to consider off-balance
-const MIN_SATS_OFF_BALANCE = 750e3
+const MIN_SATS_OFF_BALANCE = parseInt(env.MIN_SATS_OFF_BALANCE) || 750e3
 // limit of sats to balance per attempt
 // larger = faster rebalances, less for channels.db to store
 // smaller = can use smaller liquidity/channels for cheaper/easier rebalances
 // bos rebalance does probing + size up htlc strategy
 // (bos rebalance requires >50k)
-const MAX_REBALANCE_SATS = 1e6 //2e5
+const MAX_REBALANCE_SATS = parseInt(env.MAX_REBALANCE_SATS) || 1e6 // 2e5
 // unbalanced sats below this can stop (bos rebalance requires >50k)
-const MIN_REBALANCE_SATS = 1e5 //51e3
+const MIN_REBALANCE_SATS = parseInt(env.MIN_REBALANCE_SATS) || 1e5 //51e3
 // fraction of peers that need to be offline to restart tor service
-const PEERS_OFFLINE_PERCENT_MAXIMUM = 11
-const INCLUDE_RECONNECTED_IN_OFFLINE = false
+const PEERS_OFFLINE_PERCENT_MAXIMUM = parseInt(env.PEERS_OFFLINE_PERCENT_MAXIMUM) || 11
+const INCLUDE_RECONNECTED_IN_OFFLINE = env.INCLUDE_RECONNECTED_IN_OFFLINE === 'false' ? false : true
 // hours between running bos reconnect (does some disable-based reconnections)
-const MINUTES_BETWEEN_RECONNECTS = 10 * 60
+const MINUTES_BETWEEN_RECONNECTS = parseInt(env.MINUTES_BETWEEN_RECONNECTS) || 24 * 60
 // hours between running basic offline/inactive reconnect
-const MINUTES_BETWEEN_SIMPLE_RECONNECTS = 120
-// array of public key strings to avoid in paths (avoids from settings.json added to it)
-const AVOID_LIST = []
+const MINUTES_BETWEEN_SIMPLE_RECONNECTS = parseInt(env.MINUTES_BETWEEN_SIMPLE_RECONNECTS) || 2 * 60
 // memory handling
-const SHOW_RAM_USAGE = false
+const SHOW_RAM_USAGE = env.SHOW_RAM_USAGE === 'false' ? false : true
 // more logs
-const VERBOSE = true
-const DEBUG = true
+const VERBOSE = env.VERBOSE === 'false' ? false : true
+const DEBUG = env.DEBUG === 'false' ? false : true
 
 // ## REBALANCING SETTINGS
 // multiplier for proportional safety ppm margin
-const SAFETY_MARGIN = 1.125
+const SAFETY_MARGIN = parseFloat(env.SAFETY_MARGIN) || 1.25
 // maximum flat safety ppm margin (proportional below this value)
-const SAFETY_MARGIN_FLAT_MAX = 200
+const SAFETY_MARGIN_FLAT_MAX = parseInt(env.SAFETY_MARGIN_FLAT_MAX) || 222
 // suspect might cause tor issues if too much bandwidth being used
 // setting to 1 makes it try just 1 rebalance at a time
-const MAX_PARALLEL_REBALANCES = 5
+const MAX_PARALLEL_REBALANCES = parseInt(env.MAX_PARALLEL_REBALANCES) || 5
 // max minutes to spend per rebalance try
-const MINUTES_FOR_REBALANCE = 5
+const MINUTES_FOR_REBALANCE = parseInt(env.MINUTES_FOR_REBALANCE) || 5
 // max minutes to spend per keysend try
-const MINUTES_FOR_KEYSEND = 5
+const MINUTES_FOR_KEYSEND = parseInt(env.MINUTES_FOR_KEYSEND) || 5
 // rebalance with faster keysends after bos rebalance works (faster but higher risk of stuck sats so I send less)
-const USE_KEYSENDS_AFTER_BALANCE = false
+const USE_KEYSENDS_AFTER_BALANCE = env.USE_KEYSENDS_AFTER_BALANCE === 'false' ? false : true
 // only use keysends (I use for testing)
-const ONLY_USE_KEYSENDS = false
+const ONLY_USE_KEYSENDS = env.ONLY_USE_KEYSENDS === 'false' ? false : true
 // sats to balance via keysends
-const MAX_REBALANCE_SATS_KEYSEND = 2e5
-// fuzzy the amount being rebalanced to blend in better
-const fuzzyAmount = (amount, fraction = 0.21) => trunc(amount * (1 - fraction * random()))
+const MAX_REBALANCE_SATS_KEYSEND = parseInt(env.MAX_REBALANCE_SATS_KEYSEND) || 2e5
 // show rebalancing printouts (very verbose routing info (BoS output))
-const SHOW_REBALANCE_LOG = false
+const SHOW_REBALANCE_LOG = env.SHOW_REBALANCE_LOG === 'false' ? false : true
 // would average in earned/routed out fee rate measured in DAYS_FOR_STATS
 // to determine what fee rate to use for rebalance
-const INCLUDE_EARNED_FEE_RATE_FOR_REBALANCE = true
+const INCLUDE_EARNED_FEE_RATE_FOR_REBALANCE = env.INCLUDE_EARNED_FEE_RATE_FOR_REBALANCE === 'false' ? false : true
 // number of times to retry a rebalance on probe timeout while
 // increasing fee for last hop to skip all depleted channels
 // Only applies on specifically ProbeTimeout so unsearched routes remain
-const RETRIES_ON_TIMEOUTS_REBALANCE = 2
-const RETRIES_ON_TIMEOUTS_SEND = 1
+const RETRIES_ON_TIMEOUTS_REBALANCE = parseInt(env.RETRIES_ON_TIMEOUTS_REBALANCE) || 2
+const RETRIES_ON_TIMEOUTS_SEND = parseInt(env.RETRIES_ON_TIMEOUTS_SEND) || 1
 // time between retrying same good pair
 const MIN_MINUTES_BETWEEN_SAME_PAIR = (MINUTES_BETWEEN_STEPS + MINUTES_FOR_REBALANCE) * 2
 // max rebalance repeats while successful
 // if realized rebalance rate is > 1/2 max rebalance rate
 // this will just limit repeats when there's no major discounts
-const MAX_REBALANCE_REPEATS = 10 // without major discount
-const MAX_REBALANCE_REPEATS_ANY = 21 // with even discounts
-
+const MAX_REBALANCE_REPEATS = parseInt(env.MAX_REBALANCE_REPEATS) || 10 // without major discount
+const MAX_REBALANCE_REPEATS_ANY = parseInt(env.MAX_REBALANCE_REPEATS_ANY) || 21 // with even discounts
 // ms to put between each rebalance launch for safety
-const STAGGERED_LAUNCH_MS = 1111
+const STAGGERED_LAUNCH_MS = parseInt(env.STAGGERED_LAUNCH_MS) || 1111
+
+// ## FEE SETTINGS
+// how often to update fees and max htlc sizes (keep high to minimize network gossip)
+// also time span of flow to look back at for deciding if and by how much to increase each fee rate
+const MINUTES_BETWEEN_FEE_CHANGES = parseInt(env.MINUTES_BETWEEN_FEE_CHANGES) || 121
+// minimum ppm ever possible
+const MIN_PPM_ABSOLUTE = parseInt(env.MIN_PPM_ABSOLUTE) || 0
+// maximum ppm ever possible
+const MAX_PPM_ABSOLUTE = parseInt(env.MAX_PPM_ABSOLUTE) || 999
+// max size of fee adjustment upward
+const NUDGE_UP = parseFloat(env.NUDGE_UP) || 0.0314
+// max size of fee adjustment downward
+const NUDGE_DOWN = parseFloat(env.NUDGE_DOWN) || 0.00314
+// how much ppm has to change by to warrant risking htlc fails by updating fee
+const FEE_CHANGE_TOLERANCE = parseFloat(env.FEE_CHANGE_TOLERANCE) || 0.01
+// min days of no routing activity before allowing reduction in fees
+const DAYS_FOR_FEE_REDUCTION = parseFloat(env.DAYS_FOR_FEE_REDUCTION) || 4.2
+// rebalancing fee rates below this aren't considered for rebalancing
+const MIN_FEE_RATE_FOR_REBALANCE = parseInt(env.MIN_FEE_RATE_FOR_REBALANCE) || 1
+// max fee rate for rebalancing even if channel earns more
+const MAX_FEE_RATE_FOR_REBALANCE = parseInt(env.MAX_FEE_RATE_FOR_REBALANCE) || 599
+// fee rate to stop forwards out of drained channel
+const ROUTING_STOPPING_FEE_RATE = parseInt(env.ROUTING_STOPPING_FEE_RATE) || 999
 
 // available weighting strategies used for rebalancing
 const WEIGHT_OPTIONS = {}
@@ -125,28 +148,11 @@ const WEIGHT = WEIGHT_OPTIONS.MIN_LIQUIDITY // default weight
 WEIGHT_OPTIONS.FEE_RATE = peer => 1 - exp((-2 * PI * peer.fee_rate) / MAX_FEE_RATE_FOR_REBALANCE)
 // combine fee rate and liquidity functions just for remote sorting
 const WEIGHT_REMOTE = peer => 0.5 * WEIGHT_OPTIONS.MIN_LIQUIDITY(peer) + 0.5 * WEIGHT_OPTIONS.FEE_RATE(peer)
-// ## FEE SETTINGS
-// how often to update fees and max htlc sizes (keep high to minimize network gossip)
-// also time span of flow to look back at for deciding if and by how much to increase each fee rate
-const MINUTES_BETWEEN_FEE_CHANGES = 121
-// minimum ppm ever possible
-const MIN_PPM_ABSOLUTE = 0
-// maximum ppm ever possible
-const MAX_PPM_ABSOLUTE = 999
-// max size of fee adjustment upward
-const NUDGE_UP = 0.0314
-// max size of fee adjustment downward
-const NUDGE_DOWN = 0.00314
-// how much ppm has to change by to warrant risking htlc fails by updating fee
-const FEE_CHANGE_TOLERANCE = 0.01
-// min days of no routing activity before allowing reduction in fees
-const DAYS_FOR_FEE_REDUCTION = 4.2
-// rebalancing fee rates below this aren't considered for rebalancing
-const MIN_FEE_RATE_FOR_REBALANCE = 1
-// max fee rate for rebalancing even if channel earns more
-const MAX_FEE_RATE_FOR_REBALANCE = 599
-// fee rate to stop forwards out of drained channel
-const ROUTING_STOPPING_FEE_RATE = 999
+
+// fuzzy the amount being rebalanced to blend in better
+const fuzzyAmount = (amount, fraction = 0.21) => trunc(amount * (1 - fraction * random()))
+// array of public key strings to avoid in paths (avoids from settings.json added to it)
+const AVOID_LIST = []
 
 // ## FILESYSTEM SETTINGS
 const SNAPSHOTS_PATH = './snapshots'
