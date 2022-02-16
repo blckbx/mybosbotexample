@@ -31,7 +31,7 @@ const ALLOW_DB_CLEANUP = env.ALLOW_DB_CLEANUP === 'false' ? false : true
 
 // ## GENERAL SETTINGS
 // time to sleep between trying a bot step again
-const MINUTES_BETWEEN_STEPS = parseFloat(env.MINUTES_BETWEEN_STEPS) || 2
+const MINUTES_BETWEEN_STEPS = parseFloat(env.MINUTES_BETWEEN_STEPS) || 10
 // how far back to look for routing stats, must be longer than any other DAYS setting
 const DAYS_FOR_STATS = parseFloat(env.DAYS_FOR_STATS) || 7
 // channels smaller than this not necessary to balance or adjust fees for usually special cases anyway
