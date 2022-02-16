@@ -493,6 +493,7 @@ const updateBotTimers = newItems => {
   fs.writeFileSync(TIMERS_PATH, JSON.stringify(mynode.timers))
 }
 
+/*
 // carefully shut down node if low on battery
 const checkBattery = async () => {
   if (!ALLOW_NODE_SHUTDOWN_ON_LOW_BATTERY) return null
@@ -535,6 +536,7 @@ const checkBattery = async () => {
     process.exit(0)
   }
 }
+*/
 
 // experimental parallel rebalancing function (unsplit, wip)
 const runBotRebalanceOrganizer = async () => {
