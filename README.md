@@ -55,7 +55,7 @@ Copy `.env` file to `.env.local` and edit settings to your needs. At the top of 
 
 ## **⚙ Fine Tuning:**
 
-1) Setup Telegram Bot: Edit `settings.json` to your needs. Add HTTP API Token (set by BotFather) and chat id (lookup `/id` on Telegram).
+1) Optional Setup Telegram Bot: Edit `settings.json` to your needs. Add HTTP API Token (set by BotFather) and chat id (lookup `/id` on Telegram). ⚠ **A word of caution: Connecting the node with a Telegram ID can expose your identity (registrered telephone number on Telegram)!**
 2) Set rules for channels (see settings.json.example): `aliasMatch`, `min_ppm`, `max_ppm`, `no_local_rebalance`, `no_remote_balance`, `max_htlc_sats`, `AVOID_LIST` (nodes to exclude from rebalancing (even in-path))
 
 
