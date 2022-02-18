@@ -31,6 +31,10 @@ import {
   getForwards as bosGetForwards
 } from 'balanceofsatoshis/network/index.js'
 
+import { SocksProxyAgent } from 'socks-proxy-agent'
+import https from 'https'
+import url from 'url'
+
 const { trunc, min, ceil, random } = Math
 
 // reused authentication object or making new ones uses up a TON of memory
