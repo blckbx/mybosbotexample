@@ -2551,10 +2551,10 @@ const runBotReconnect = async () => {
     ? `🔌 Offline Statistics (BoS Reconnect):\n` 
       + ` ${offline.length} / ${peersTotal} peers offline (${((offline.length / peersTotal) * 100).toFixed(0)}%):\n-` 
       + ` ${offlinePeerInfoList.join('\n- ') || 'n/a'}\n` 
-      + ` ${reconnected.length} peers reconnected: \n-` 
-      + ` ${reconnected.map(p => p.alias).join('\n- ') || 'n/a'}\n`
       + ` ${peersDisabledToMe.length} peers IN-disabled (${((peersDisabledToMe.length / peersTotal) * 100).toFixed(0)}%):\n-`
       + ` ${peersDisabledToMe.map(p => p.alias).join('\n- ') || 'n/a'}\n` 
+      + ` ${reconnected.length} peers reconnected: \n-` 
+      + ` ${reconnected.map(p => p.alias).join('\n- ') || 'n/a'}\n`
       + `(BoS reconnects every ${MINUTES_BETWEEN_RECONNECTS} minutes).`
     : 'BoS/LND issue detected'
 
