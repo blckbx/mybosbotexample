@@ -11,6 +11,7 @@
   "author": "",
   "license": "MIT license",
   "dependencies": {
-  	"dotenv": "^16.0.0"
+  	"dotenv": "^16.0.0",
+  	"socks-proxy-agent": "^6.2.0-beta.0"
   }
 }
