@@ -30,6 +30,9 @@ const ALLOW_DB_CLEANUP = env.ALLOW_DB_CLEANUP === 'false' ? false : true
 // ######################
 
 // ## GENERAL SETTINGS
+// (Tor) Proxy for Telegram Bot
+const TELEGRAM_PROXY_HOST = env.TELEGRAM_PROXY_HOST || ''
+const TELEGRAM_PROXY_PORT = env.TELEGRAM_PROXY_PORT || ''
 // time to sleep between trying a bot step again
 const MINUTES_BETWEEN_STEPS = parseFloat(env.MINUTES_BETWEEN_STEPS) || 10
 // how far back to look for routing stats, must be longer than any other DAYS setting
@@ -2389,8 +2392,9 @@ routing rewards: ${median(forwardsAll.map(f => f.fee_mtokens / 1000.0), { pr: 1 
 
 // uses telegram logging if available
 const telegramLog = async message => {
-  const { token, chat_id } = mynode.settings?.telegram || {}
-  if (token && chat_id) await bos.sayWithTelegramBot({ token, chat_id, message })
+  var proxy = ''
+  if(TELEGRAM_PROXY_HOST != '' && TELEGRAM_PROXY_PORT != '') { proxy = `socks://${TELEGRAM_PROXY_HOST}:${TELEGRAM_PROXY_PORT}` }
+  if (token && chat_id) await bos.sayWithTelegramBot({ token, chat_id, message, proxy })
 }
 
 // experimental
