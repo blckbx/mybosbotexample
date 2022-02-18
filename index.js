@@ -376,9 +376,6 @@ const initialize = async () => {
   ========================================================
   `)
 
-  // small pause for friendly stop
-  await sleep(5 * seconds)
-
   // make folders for all the files I use
   if (!fs.existsSync(PEERS_LOG_PATH)) {
     fs.mkdirSync(PEERS_LOG_PATH, { recursive: true })
@@ -402,6 +399,19 @@ const initialize = async () => {
       console.log(`${getDate()}`, { AVOID_LIST })
     }
   }
+  
+  if(TELEGRAM_PROXY_HOST != '' 
+    && TELEGRAM_PROXY_PORT != '' 
+    && mynode.settings?.telegram.chat_id 
+    && mynode.settings?.telegram.token)
+  {
+    logDim(`bos.sayWithTelegramBot(): Connecting via proxy: socks://${TELEGRAM_PROXY_HOST}:${TELEGRAM_PROXY_PORT}`)
+  } else {
+    logDim(`bos.sayWithTelegramBot(): Connecting without proxy`)
+  }
+  
+  // small pause for friendly stop
+  await sleep(5 * seconds)
 
   // timers
   initializeBotTimers()
