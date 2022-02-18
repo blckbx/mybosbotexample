@@ -16,7 +16,7 @@ Tested configuration:
 
 1) Clone the repo: `git clone https://github.com/blckbx/bosbot.git`
 2) Create your own settings file: `cp .env .env.local` (prevents overwriting personal settings when updating via `git pull`)
-3) Open and edit `.env.local` to your needs (see below).
+3) Edit `.env.local` to your needs (see below).
 4) At the top of the file set which `MANAGEMENT SWITCHES` should be applied.
 
 - `ALLOW_BOS_RECONNECT`: BosBot checks for offline peers and tries to reconnect them within a given time period
