@@ -33,7 +33,6 @@ import {
 
 import { SocksProxyAgent } from 'socks-proxy-agent'
 import https from 'https'
-import url from 'url'
 
 const { trunc, min, ceil, random } = Math
 
@@ -627,7 +626,7 @@ const sayWithTelegramBot = async ({ token, chat_id, message, proxy, parse_mode =
   const parseModeString = parse_mode ? `&parse_mode=${parse_mode}` : ''
   try {
     var endpoint = `https://api.telegram.org/bot${token}/sendMessage?chat_id=${chat_id}&text=${encodeURIComponent(message)}${parseModeString}`
-    var opts = url.parse(endpoint)
+    var opts = new URL(endpoint)
     log && logDim(`sayWithTelegramBot(): PROXY=${proxy} URL=${endpoint}`)
     if (proxy === "") {
       log && logDim(`${getDate()} bos.sayWithTelegramBot()`)
