@@ -32,7 +32,6 @@ import {
 } from 'balanceofsatoshis/network/index.js'
 
 import { SocksProxyAgent } from 'socks-proxy-agent'
-import https from 'https'
 
 const { trunc, min, ceil, random } = Math
 
@@ -627,28 +626,31 @@ const sayWithTelegramBot = async ({ token, chat_id, message, proxy, parse_mode =
   try {
     var endpoint = `https://api.telegram.org/bot${token}/sendMessage?chat_id=${chat_id}&text=${encodeURIComponent(message)}${parseModeString}`
     var opts = new URL(endpoint)
-    log && logDim(`sayWithTelegramBot(): PROXY=${proxy} URL=${endpoint}`)
+    
     if (proxy === "") {
-      log && logDim(`${getDate()} bos.sayWithTelegramBot()`)
+      log && logDim(`bos.sayWithTelegramBot()`)
     } else {
       opts.agent = new SocksProxyAgent(proxy)
-      log && logDim(`${getDate()} bos.sayWithTelegramBot() using proxy ${proxy}`)      
+      log && logDim(`bos.sayWithTelegramBot() using proxy ${proxy}`)      
+      log && logDim(`sayWithTelegramBot(): PROXY=${proxy} URL=${endpoint}`)
     }
-    
-    const res = await https.get(opts, function (res) {
-      //log && logDim(`${getDate()} response event!`, res.headers)
-    })
-    return res
+
+    const res = await fetch(opts)
+    const fullResponse = await res.json()
+    log && logDim(`${getDate()} bos.sayWithTelegramBot() result:`, JSON.stringify(fullResponse, null, 2))
+    return fullResponse
+
     /*
     log && logDim(`${getDate()} bos.sayWithTelegramBot()`)
     const res = await fetch(
       `https://api.telegram.org/bot${token}/sendMessage?chat_id=${chat_id}` +
         `&text=${encodeURIComponent(message)}${parseModeString}`
     )
+    
     const fullResponse = await res.json()
     log && logDim(`${getDate()} bos.sayWithTelegramBot() result:`, JSON.stringify(fullResponse, null, 2))
-    return fullResponse
-    */
+    */    
+
   } catch (e) {
     console.error(`${getDate()} bos.sayWithTelegramBot() aborted:`, e)
     return null
