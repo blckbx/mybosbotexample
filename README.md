@@ -12,9 +12,12 @@ Tested configuration:
 - [NodeJS 16.13.2](https://nodejs.org)
 
 
-## **✏ Usage / Management Switches:**
+## **✏ Get Started / Usage / Management Switches:**
 
-Copy `.env` file to `.env.local` and edit settings to your needs. At the top of the file set which `MANAGEMENT SWITCHES` should be applied.
+1) Clone the repo: `git clone https://github.com/blckbx/bosbot.git`
+2) Create your own settings file: `cp .env .env.local` (prevents overwriting personal settings when updating via `git pull`)
+3) Open and edit `.env.local` to your needs (see below).
+4) At the top of the file set which `MANAGEMENT SWITCHES` should be applied.
 
 - `ALLOW_BOS_RECONNECT`: BosBot checks for offline peers and tries to reconnect them within a given time period
 - `ALLOW_SIMPLE_RECONNECT`: BosBot checks for inactive peers and disabled channels and tries to reactivate them quickly via disconnecting and reconnecting
@@ -23,14 +26,7 @@ Copy `.env` file to `.env.local` and edit settings to your needs. At the top of 
 - `ALLOW_REBALANCING`: BosBot rebalances channels which are depleted to local or remote side (500_000 sats off balance with channel size above 2M)
 - `ALLOW_DB_CLEANUP`: enables or disables backup payments in jsons and remove from channel database for speed every `DAYS_BETWEEN_DB_CLEANING` days
 
-
-## **▶ Start Commands:**
-
-- `npm start` : starts BosBot
-- `npm run start-limiter` : starts htlcLimiter from `\tools\` directory (in a separate process)
-
-
-## **🎛 Adjust Important Settings:**
+5) **🎛 Adjust Important Settings:**
 
 - `MIN_PPM_ABSOLUTE`: minimum fees
 - `MAX_PPM_ABSOLUTE`: maximum fees
