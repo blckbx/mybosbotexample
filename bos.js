@@ -617,11 +617,26 @@ const getNodeFromGraph = async ({ public_key, is_omitting_channels = true }, log
 
 // token looks like adsfasfdsf:adsfsadfasdfasfasdfasfd-asdfsf
 // chat_id looks like 1231231231
-const sayWithTelegramBot = async ({ token, chat_id, message, parse_mode = 'HTML' }, log = false) => {
+const sayWithTelegramBot = async ({ token, chat_id, message, proxy, parse_mode = 'HTML' }, log = false) => {
   // parse_mode can be undefined, or 'MarkdownV2' or 'HTML'
   // https://core.telegram.org/bots/api#html-style
   const parseModeString = parse_mode ? `&parse_mode=${parse_mode}` : ''
   try {
+    var endpoint = `https://api.telegram.org/bot${token}/sendMessage?chat_id=${chat_id}&text=${encodeURIComponent(message)}${parseModeString}`
+    var opts = url.parse(endpoint)
+    log && logDim(`sayWithTelegramBot(): PROXY=${proxy} URL=${endpoint}`)
+    if (proxy === "") {
+      log && logDim(`${getDate()} bos.sayWithTelegramBot()`)
+    } else {
+      opts.agent = new SocksProxyAgent(proxy)
+      log && logDim(`${getDate()} bos.sayWithTelegramBot() using proxy ${proxy}`)      
+    }
+    
+    const res = await https.get(opts, function (res) {
+      //log && logDim(`${getDate()} response event!`, res.headers)
+    })
+    return res
+    /*
     log && logDim(`${getDate()} bos.sayWithTelegramBot()`)
     const res = await fetch(
       `https://api.telegram.org/bot${token}/sendMessage?chat_id=${chat_id}` +
@@ -630,6 +645,7 @@ const sayWithTelegramBot = async ({ token, chat_id, message, parse_mode = 'HTML'
     const fullResponse = await res.json()
     log && logDim(`${getDate()} bos.sayWithTelegramBot() result:`, JSON.stringify(fullResponse, null, 2))
     return fullResponse
+    */
   } catch (e) {
     console.error(`${getDate()} bos.sayWithTelegramBot() aborted:`, e)
     return null
