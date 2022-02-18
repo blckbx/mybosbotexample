@@ -41,6 +41,7 @@ Copy `.env` file to `.env.local` and edit settings to your needs. At the top of 
 - `DAYS_FOR_FEE_REDUCTION`: min days of no routing before allowing fee reduction
 - `ROUTING_STOPPING_FEE_RATE`: ppm fees for drained channels
 - `MAX_PARALLEL_REBALANCES`: max count of parallel rebalances (high usage of resouces!)
+- `TELEGRAM_PROXY_HOST` & `TELEGRAM_PROXY_PORT`: add a (Tor) proxy for messaging with Telegram bot (recommended)
 
 
 ## **♾ Workflow:**
@@ -55,7 +56,7 @@ Copy `.env` file to `.env.local` and edit settings to your needs. At the top of 
 
 ## **⚙ Fine Tuning:**
 
-1) Optional Setup Telegram Bot: Edit `settings.json` to your needs. Add HTTP API Token (set by BotFather) and chat id (lookup `/id` on Telegram). ⚠ **A word of caution: Connecting the node with a Telegram ID can expose your identity (registrered telephone number on Telegram)!**
+1) Optional Setup Telegram Bot: Edit `settings.json` to your needs. Add HTTP API Token (set by BotFather) and chat id (lookup `/id` on Telegram). ⚠ **A word of caution: Connecting the node with a Telegram ID can expose your identity (registrered telephone number on Telegram)! It's adviced to use a proxy (e.g. Tor, see `.env` settings) to connect to your Telegram bot.**
 2) Set rules for channels (see settings.json.example): `aliasMatch`, `min_ppm`, `max_ppm`, `no_local_rebalance`, `no_remote_balance`, `max_htlc_sats`, `AVOID_LIST` (nodes to exclude from rebalancing (even in-path))
 
 
