@@ -26,7 +26,7 @@ Tested configuration:
 - `ALLOW_REBALANCING`: BosBot rebalances channels which are depleted to local or remote side (500_000 sats off balance with channel size above 2M)
 - `ALLOW_DB_CLEANUP`: enables or disables backup payments in jsons and remove from channel database for speed every `DAYS_BETWEEN_DB_CLEANING` days
 
-5) **🎛 Adjust Important Settings:**
+5) Adjust Important Settings:
 
 - `MIN_PPM_ABSOLUTE`: minimum fees
 - `MAX_PPM_ABSOLUTE`: maximum fees
