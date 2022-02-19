@@ -1,7 +1,7 @@
 // logs peer disconnects/connects and graph policy updates (fee rates n stuff) in our channels
 // also logs forwarding successes and failures w/ reason if provided
 
-import bos from './bos.js'
+import bos from '../bos.js'
 const { lnService } = bos
 
 const run = async () => {
