@@ -77,8 +77,8 @@ const run = async () => {
     if (f.is_failed) {
       if (f.external_failure || f.internal_failure) {
         log(`🚨 forwarding failure: ${from} -> ${to} of ${amt} for ${fee}`)
-        if (f.external_failure && f.external_failure !== 'NO_DETAIL') log('  🤡 external failure:', f.external_failure)
-        if (f.internal_failure && f.internal_failure !== 'NO_DETAIL') log('  💩 internal failure:', f.internal_failure)
+        if (f.external_failure && f.external_failure !== 'NO_DETAIL') log('    external failure:', f.external_failure)
+        if (f.internal_failure && f.internal_failure !== 'NO_DETAIL') log('    internal failure:', f.internal_failure)
       } else {
         // no reason = likely just canceled, not worth showing
         // log(`\x1b[2m⚠ forwarding failure w/o reason: ${from} -> ${to} of ${amt} for ${fee}\x1b[0m`)
