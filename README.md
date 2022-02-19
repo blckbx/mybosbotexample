@@ -39,6 +39,11 @@ Tested configuration:
 - `MAX_PARALLEL_REBALANCES`: max count of parallel rebalances (high usage of resouces!)
 - `TELEGRAM_PROXY_HOST` & `TELEGRAM_PROXY_PORT`: add a (Tor) proxy for messaging with Telegram bot (recommended)
 
+6) Start Scripts:
+
+- `npm start` : starts BosBot
+- `npm run start-limiter` : starts htlcLimiter from `\tools\` directory
+- `npm run start-monitor` : starts monitorPeers from `\tools\` directory
 
 ## **♾ Workflow:**
 
@@ -383,6 +388,41 @@ $ node getCapacityFees
                        ...
 ````
 
+### **📺 monitorPeers:** ###
+
+Logs your and your peers activity: graph policy updates of connected channels (base_fee_mtokens, cltv_delta, fee_rate, is_disabled, max_htlc_mtokens, min_htlc_mtokens, updated_at), peers disconnects/connects, forwardings (success/failures with reason, if provided).
+
+````
+⛔ disconnected from <alias> <pubkey>
+💚 connected to <alias> <pubkey>
+
+📣 remote update for peer <alias> <pubkey>
+  fee_rate: 222 -> 111
+  updated_at: <time1> -> <time2>
+
+📣 remote update for peer <alias> <pubkey>
+  is_disabled: true -> false
+  updated_at: <time1> -> <time2>
+  
+📣 local update for peer <alias> <pubkey>
+  max_htlc_mtokens: 10000000000 -> 20000000000
+  updated_at: <time1> -> <time2>
+  
+🚨 forwarding failure: <alias> -> n/a of n/a for n/a
+   🤡 external failure: INCORRECT_OR_UNKNOWN_PAYMENT_DETAILS
+   💩 internal failure: UNKNOWN_INVOICE
+
+🚨 forwarding failure: <alias1> -> <alias2> of 100000.000 sats for 100.000 sats fee
+   🤡 external failure: TEMPORARY_CHANNEL_FAILURE
+   💩 internal failure: INSUFFICIENT_BALANCE
+   
+🚨 forwarding failure: <alias1> -> <alias2> of 100000.000 sats for 100.000 sats fee
+   🤡 external failure: TEMPORARY_CHANNEL_FAILURE
+   💩 internal failure: FEE_INSUFFICIENT
+
+⚡ forwarding success: <alias1> -> n/a of n/a for n/a
+⚡ forwarding success: n/a -> <alias2> of 100.000 sats for n/a
+````
 
 ___________________________________________________________
 ## original description by legalizemath
