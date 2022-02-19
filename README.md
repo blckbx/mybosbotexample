@@ -390,7 +390,7 @@ $ node getCapacityFees
 
 ### **📺 monitorPeers:** ###
 
-Logs your and your peers activity: graph policy updates of connected channels (base_fee_mtokens, cltv_delta, fee_rate, is_disabled, max_htlc_mtokens, min_htlc_mtokens, updated_at), peers disconnects/connects, forwardings (success/failures with reason, if provided).
+Logs your and your peers' activity and forwards: graph policy updates of connected channels (base_fee_mtokens, cltv_delta, fee_rate, is_disabled, max_htlc_mtokens, min_htlc_mtokens, updated_at), peers disconnects/connects, forwardings (success/failures with reason, if provided).
 
 ````
 ⛔ disconnected from <alias> <pubkey>
