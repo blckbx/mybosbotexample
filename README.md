@@ -419,6 +419,13 @@ Logs your and your peers' activity and forwards: graph policy updates of connect
 🚨 forwarding failure: <alias1> -> <alias2> of 100000.000 sats for 100.000 sats fee
    🤡 external failure: TEMPORARY_CHANNEL_FAILURE
    💩 internal failure: FEE_INSUFFICIENT
+   
+🚨 forwarding failure: <alias1> -> <alias2> of 100000.000 sats for 100.000 sats fee
+   🤡 external failure: UNKNOWN_NEXT_PEER
+ 
+🚨 forwarding failure: <alias> -> n/a of n/a for n/a
+   🤡 external failure: TEMPORARY_CHANNEL_FAILURE
+   💩 internal failure: HTLC_ADD_FAILED
 
 ⚡ forwarding success: <alias1> -> n/a of n/a for n/a
 ⚡ forwarding success: n/a -> <alias2> of 100.000 sats for n/a
