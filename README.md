@@ -192,22 +192,22 @@ Checks frequently (`MINUTES_BETWEEN_RECONNECTS` / `MINUTES_BETWEEN_SIMPLE_RECONN
 - Node1 : 45% IN-disabled | 0.5d offline
 - Node2 : 75% IN-disabled | 0.0d offline
 - Node3 : 30% IN-disabled | 1.5d offline
-1 peers reconnected: 
-- Node1
 2 / 10 (20%) IN-disabled (20%):
 - Node4
 - Node5
+1 peers reconnected: 
+- Node1
 (BoS reconnects every x minutes).
 ````
 
 ````
 🔌 Simple Reconnect Statistics:
- 2 / 10 peers offline (20%):
+2 / 10 peers offline (20%):
 - Node1 : 45% IN-disabled | 0.5d offline
 - Node2 : 75% IN-disabled | 0.0d offline
- 0 peers reconnected: 
+0 / 10 IN-disabled (0%):
 - n/a
- 0 / 10 IN-disabled (0%):
+0 peers reconnected: 
 - n/a
 (Simple Reconnect every x minutes).
 ````
