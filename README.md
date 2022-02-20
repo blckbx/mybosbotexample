@@ -42,8 +42,8 @@ Tested configuration:
 6) Start Scripts:
 
 - `npm start` : starts BosBot
-- `npm run start-limiter` : starts htlcLimiter from `\tools\` directory
-- `npm run start-monitor` : starts monitorPeers from `\tools\` directory
+- `npm run limiter` : starts htlcLimiter from `\tools\` directory
+- `npm run monitor` : starts monitorPeers from `\tools\` directory
 
 ## **♾ Workflow:**
 
@@ -139,7 +139,7 @@ Channel F     max htlc:   8_388_608
 
 ## **🛡 HTLC Limiter / Firewall:**
 
-A module to watch and limit numbers of pending htlcs per channel based on fee policies. In parallel BosBot watches for forwarding requests, calculates the htlc's fee and adds the forward to its fee range (currently 2^X). If the number of pending htlcs within a given fee range exceeds the limit, the forward is rejected. For now there are more htlcs allowed for outgoing than incoming direction. Also it acts as a rate limiter for htlcs. 
+A module to watch and limit numbers of pending htlcs per channel based on fee policies. In parallel BosBot watches for forwarding requests, calculates the htlc's fee and adds the forward to its fee range (currently 2^X). If the number of pending htlcs within a given fee range exceeds the limit, the forward is rejected. For now there are more htlcs allowed for outgoing than incoming direction. Also it acts as a rate limiter for htlcs. Run `npm run limiter` to start (separate terminal window recommended).
 ````
 htlcLimiter() ✅       8123  amt,      5.736  fee     ~2^2 Channel A -> Channel B       all: {is_forward: 4, other: 3, out: 5, in: 2}   666666x1111x1 {"1":1,"2":1} -> 777777x2222x1   {"2":1} 
 htlcLimiter() ✅       3353  amt,      1.231  fee     ~2^0 Channel A -> Channel C       all: {is_forward: 6, other: 3, out: 6, in: 3}   666666x1111x1 {"0":1,"1":1,"2":1} -> 694035x2032x1   {"0":1,"1":1} 
@@ -390,7 +390,7 @@ $ node getCapacityFees
 
 ### **📺 monitorPeers:** ###
 
-Logs your and your peers' activity and forwards: graph policy updates of connected channels (base_fee_mtokens, cltv_delta, fee_rate, is_disabled, max_htlc_mtokens, min_htlc_mtokens, updated_at), peers disconnects/connects, forwardings (success/failures with reason, if provided).
+Logs your and your peers' activity and forwards: graph policy updates of connected channels (base_fee_mtokens, cltv_delta, fee_rate, is_disabled, max_htlc_mtokens, min_htlc_mtokens, updated_at), peers disconnects/connects, forwardings (success/failures with reason, if provided). Run `npm run monitor` to start the listener (separate terminal window recommended).
 
 ````
 ⛔ disconnected from <alias> <pubkey>
