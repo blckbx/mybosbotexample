@@ -394,6 +394,7 @@ Logs your and your peers' activity and forwards: graph policy updates of connect
 
 ````
 ⛔ disconnected from <alias> <pubkey>
+
 💚 connected to <alias> <pubkey>
 
 📣 remote update for peer <alias> <pubkey>
@@ -407,10 +408,6 @@ Logs your and your peers' activity and forwards: graph policy updates of connect
 📣 local update for peer <alias> <pubkey>
   max_htlc_mtokens: 10000000000 -> 20000000000
   updated_at: <time1> -> <time2>
-  
-🚨 forwarding failure: <alias> -> n/a of n/a for n/a
-   🤡 external failure: INCORRECT_OR_UNKNOWN_PAYMENT_DETAILS
-   💩 internal failure: UNKNOWN_INVOICE
 
 🚨 forwarding failure: <alias1> -> <alias2> of 100000.000 sats for 100.000 sats fee
    🤡 external failure: TEMPORARY_CHANNEL_FAILURE
@@ -428,7 +425,7 @@ Logs your and your peers' activity and forwards: graph policy updates of connect
    💩 internal failure: HTLC_ADD_FAILED
 
 ⚡ forwarding success: <alias1> -> n/a of n/a for n/a
-⚡ forwarding success: n/a -> <alias2> of 100.000 sats for n/a
+⚡ forwarding success: n/a -> <alias2> of x sats for n/a
 ````
 
 ___________________________________________________________
