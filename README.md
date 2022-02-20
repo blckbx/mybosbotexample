@@ -402,7 +402,7 @@ Logs your and your peers' activity and forwards: graph policy updates of connect
   updated_at: <time1> -> <time2>
 
 📣 remote update for peer <alias> <pubkey>
-  is_disabled: true -> false
+  is_disabled: 1 -> 0
   updated_at: <time1> -> <time2>
   
 📣 local update for peer <alias> <pubkey>
