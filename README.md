@@ -39,11 +39,18 @@ Tested configuration:
 - `MAX_PARALLEL_REBALANCES`: max count of parallel rebalances (high usage of resouces!)
 - `TELEGRAM_PROXY_HOST` & `TELEGRAM_PROXY_PORT`: add a (Tor) proxy for messaging with Telegram bot (recommended)
 
-6) Start Scripts:
+6) Start Commands:
 
-- `npm start` : starts BosBot
-- `npm run limiter` : starts htlcLimiter from `\tools\` directory
-- `npm run monitor` : starts monitorPeers from `\tools\` directory
+- `npm start` : starts [BosBot](#-workflow)
+- `npm run limiter` : starts [htlcLimiter](#-htlc-limiter--firewall)
+- `npm run monitor` : starts [monitorPeers](t#-monitorpeers)
+- `npm run visualize` : starts [visualizer](#-visualization)
+- `npm run nodesinpaths` : starts [nodesInPaths](#-nodes-in-paths)
+- `npm run isitdown <alias/pubkey>` : starts [isItDown](#-isitdown)
+- `npm run lookup <alias>` : starts [lookup](#-lookup) of a peer's collected data,
+- `npm run isitsafetorestart` starts [isItSafeToRestart](#-isitsafetorestart)
+- `npm run getcapacityfees`: starts [getCapacityFees](#-getcapacityfees)
+- `npm run checkchans`: starts [checkChans](#-checkchans)
 
 ## **♾ Workflow:**
 
@@ -185,7 +192,7 @@ generatePeersSnapshots()
 
 ## **🔌 BoS Reconnect / Simple Reconnect:**
 
-Checks frequently (`MINUTES_BETWEEN_RECONNECTS` / `MINUTES_BETWEEN_SIMPLE_RECONNECTS`) for offline / inactive peers and tries to reconnect them with `bos reconnect` (6h+ interval recommended) or `simple reconnect`(for the quick reconnect on inactive peers or disabled channels). Additionally a Telegram message with stats of successful and/or unsuccessful reconnects is being sent:
+Checks frequently (`MINUTES_BETWEEN_RECONNECTS` / `MINUTES_BETWEEN_SIMPLE_RECONNECTS`) for offline / inactive peers and tries to reconnect them with `bos reconnect` (6h+ interval recommended) or `simple reconnect`(for the quick reconnect of inactive peers and/or disabled channels). Additionally a Telegram message containing stats of successful and/or unsuccessful reconnects is being sent:
 ````
 🔌 Offline Statistics (BoS Reconnect):
 3 / 10 peers offline (30%):
@@ -215,7 +222,7 @@ Checks frequently (`MINUTES_BETWEEN_RECONNECTS` / `MINUTES_BETWEEN_SIMPLE_RECONN
 
 ## **🌱 Statistics for 7 days:**
 
-On every run BosBot messages some statistics about earned, spent and net sats for the last 7 days. Routing rewards are displayed in min, 1/4th, median, average, 3/4th and max amounts as well as the overall count of routings:
+On every run BosBot messages some statistics about earned, spent and net sats for the last 7 days. Routing rewards are displayed in min, 1/4th, median, average, 3/4th and max amounts as well as the overall count of routings in this time frame:
 ````
 🌱 7d Statistics:
 earned: 2000
@@ -228,8 +235,7 @@ routing rewards: (n: 100) min: 1, 1/4th: 2.5, median: 5.5, avg: 20.5, 3/4th: 21,
 ## **/ 🔧 TOOLS /**
 
 ### **📜 Summary:**
-
-Run `node lndsummary` to gather useful data based on your node's statistics (balances, fees, weekly stats for profits and forwards)
+Gathers useful data based on your node's statistics (balances, fees, weekly stats for profits and forwards)
 ````
   NODE SUMMARY:
 
@@ -315,25 +321,38 @@ Bosbot collects historical data (channel stats, fee stats, peer stats) per peer 
 
 ### **📈 Visualization:**
 
-Run `node visualize` to start up a webservice hosted at http://localhost:7890 or http://(your-local-address/ip):7890 
+Starts up a webservice hosted at http://localhost:7890 or http://(your-local-address/ip):7890 to query some node data. xAxis, yAxis, and rAxis can be set to days, ppm, routed, earned, count (for grouped). Can combine items into xGroups number of groups along x axis. ppm, routed, earned will be plotted in log scale, days in linear. Some example query strings:
+- http://localhost:7890/?daysForStats=7&xGroups=0&xAxis=ppm&yAxis=earned&rAxis=routed&any=bfx&out=&from=&roundDown=&type=bubble
+- ?daysForStats=7&xGroups=0&xAxis=ppm&yAxis=earned&rAxis=&out=&from=&roundDown=1&type=bubble
+- ?daysForStats=14&xAxis=ppm&yAxis=earned
+- ?daysForStats=14&xAxis=ppm&yAxis=earned&xGroups=10
+- ?daysForStats=14&xAxis=ppm&yAxis=earned&out=aci
+- ?daysForStats=14&xAxis=ppm&yAxis=earned&from=acinq
+- ?daysForStats=14&xAxis=days&yAxis=earned
+- ?daysForStats=14&xAxis=days&yAxis=earned&xGroups=10
+- ?daysForStats=90&xAxis=days&yAxis=earned&xGroups=10&type=line
+- ?daysForStats=30&xAxis=ppm&yAxis=earned&rAxis=count&xGroups=15
+- ?daysForStats=7&xAxis=ppm&yAxis=earned&rAxis=routed
+- ?daysForStats=7&xAxis=days&yAxis=earned&rAxis=count&xGroups=20
+- ?daysForStats=30&yAxis=count&xAxis=routed&xGroups=21&type=line
 
 ![image](https://github.com/blckbx/mybosbotexample/blob/main/examples/visualize.png)
 Example: For all forwards show earned fees and ppm rates
   
  
-### **💎 Nodes in Path:** ###
+### **💎 Nodes in Paths:** ###
 
-Running `node nodes_in_path` shows most used nodes in past rebalances. Switches `DAYS_FOR_STATS` (how many days to look back) and `SHOW_PEERS` (show already connected peers) are adjustable. For this script to run some data is needed (run index.js at least once, turn off any management switches).
+Shows most used nodes in past rebalances. Switches `DAYS_FOR_STATS` (how many days to look back) and `SHOW_PEERS` (show already connected peers) are adjustable. For this script to run some data is needed (run index.js at least once, turn off any management switches).
 
 
 ### **🔍 Lookup:** ###
 
-Running `node lookup <alias>` displays data of a specific alias/peer.
+Displays data of a specific alias/peer.
 
 
 ### **🔴 IsItDown:** ###
 
-Query any node's number and percentage of disabled channels towards them to get an overview if it is possibly down or if there are connectivity problems. `node isitdown <alias>`
+Query any node's number and percentage of disabled channels towards them to get an overview if it is possibly down or if there are connectivity problems.
 
 ````
 $ node isitdown alias
@@ -343,7 +362,7 @@ $ node isitdown alias
 
 ### **✅ checkChans:** ###
 
-Checks your channels for inactive and IN/OUT-disabled channels to get a quick overview if strange things are going on. `node checkChans`
+Checks your channels for inactive and IN/OUT-disabled channels to get a quick overview if strange things are going on.
 
 ````
 $ node checkChans
@@ -364,7 +383,7 @@ $ node checkChans
 
 ### **♻ IsItSafeToRestart:** ###
 
-Checks for pending HTLCs and returns an estimation if a restart could be potentially risky due to HTLC expiration. `node isitsafetorestart`
+Checks for pending HTLCs and returns an estimation if a restart could be potentially risky due to HTLC expiration.
 
 ````
 $ node isitsafetorestart
@@ -390,7 +409,7 @@ $ node getCapacityFees
 
 ### **📺 monitorPeers:** ###
 
-Logs your and your peers' activity and forwards: graph policy updates of connected channels (base_fee_mtokens, cltv_delta, fee_rate, is_disabled, max_htlc_mtokens, min_htlc_mtokens, updated_at), peers disconnects/connects, forwardings (success/failures with reason, if provided). Run `npm run monitor` to start the listener (separate terminal window recommended).
+Logs your and your peers' activity and forwards: graph policy updates of connected channels (base_fee_mtokens, cltv_delta, fee_rate, is_disabled, max_htlc_mtokens, min_htlc_mtokens, updated_at), peers disconnects/connects, forwardings (success/failures with reason, if provided). Start the listener in a separate terminal window (recommended).
 
 ````
 ⛔ disconnected from <alias> <pubkey>
