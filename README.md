@@ -42,8 +42,8 @@ Tested configuration:
 6) Start Commands:
 
 - `npm start` : starts [BosBot](#-workflow)
-- `npm run limiter` : starts [htlcLimiter](#-htlc-limiter--firewall)
-- `npm run monitor` : starts [monitorPeers](t#-monitorpeers)
+- `npm run limiter` : starts [htlcLimiter](#-htlc-limiter--firewall) (logs to screen and file `limiter.log`)
+- `npm run monitor` : starts [monitorPeers](t#-monitorpeers) (logs to screen and file `monitor.log`)
 - `npm run visualize` : starts [visualizer](#-visualization)
 - `npm run nodesinpaths` : starts [nodesInPaths](#-nodes-in-paths)
 - `npm run isitdown <alias/pubkey>` : starts [isItDown](#-isitdown)
