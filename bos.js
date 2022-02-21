@@ -31,7 +31,7 @@ import {
   getForwards as bosGetForwards
 } from 'balanceofsatoshis/network/index.js'
 
-import { SocksProxyAgent } from 'socks-proxy-agent'
+import { SocksProxyAgent } from 'balanceofsatoshis/node_modules/socks-proxy-agent/dist/index.js'
 
 const { trunc, min, ceil, random } = Math
 
