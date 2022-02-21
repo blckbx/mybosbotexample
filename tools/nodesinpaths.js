@@ -1,9 +1,9 @@
 import fs from 'fs'
 import bos from '../bos.js'
 
-const LOG_FILES = '../logs'
+const LOG_FILES = './logs'
 const DAYS_FOR_STATS = 60
-const SNAPSHOTS_PATH = '../snapshots'
+const SNAPSHOTS_PATH = './snapshots'
 const SHOW_PEERS = true
 
 const initialize = async () => {
