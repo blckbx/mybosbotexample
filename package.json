@@ -6,8 +6,15 @@
   "type": "module",
   "scripts": {
     "start": "npm link balanceofsatoshis && node --optimize_for_size --max_old_space_size=400 --expose_gc index.js",
-    "limiter": "npm link balanceofsatoshis && node --optimize_for_size --max_old_space_size=200 --expose_gc tools/htlcLimiter.js",
-    "monitor": "npm link balanceofsatoshis && node --optimize_for_size --max_old_space_size=200 --expose_gc tools/monitorPeers.js"
+    "limiter": "npm link balanceofsatoshis && node --optimize_for_size --max_old_space_size=200 --expose_gc tools/htlcLimiter.js | tee -a limiter.log",
+    "monitor": "npm link balanceofsatoshis && node --optimize_for_size --max_old_space_size=200 --expose_gc tools/monitorPeers.js | tee -a monitor.log",
+    "visualize": "npm link balanceofsatoshis && node --optimize_for_size --max_old_space_size=200 tools/visualize.js",
+    "nodesinpaths": "npm link balanceofsatoshis && node --optimize_for_size --max_old_space_size=200 tools/nodesinpaths.js",
+    "isitdown": "npm link balanceofsatoshis && node --optimize_for_size --max_old_space_size=200 tools/isitdown.js",
+    "lookup": "npm link balanceofsatoshis && node --optimize_for_size --max_old_space_size=200 tools/lookup.js",
+    "isitsafetorestart": "npm link balanceofsatoshis && node --optimize_for_size --max_old_space_size=200 tools/isitsafetorestart.js",
+    "getcapacityfees": "npm link balanceofsatoshis && node --optimize_for_size --max_old_space_size=200 tools/getCapacityFees.js",
+    "checkchans": "npm link balanceofsatoshis && node --optimize_for_size --max_old_space_size=200 tools/checkChans.js"
   },
   "author": "",
   "license": "MIT license",
