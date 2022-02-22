@@ -21,7 +21,7 @@ Tested configuration:
 
 - `ALLOW_BOS_RECONNECT`: BosBot checks for offline peers and tries to reconnect them within a given time period
 - `ALLOW_SIMPLE_RECONNECT`: BosBot checks for inactive peers and disabled channels and tries to reactivate them quickly via disconnecting and reconnecting
-- `ADJUST_POLICIES`: BosBot is permitted to adjust outgoing fees and max htlc sizes of your channels
+- `ADJUST_POLICIES`: BosBot is permitted to adjust outgoing fees and max htlc sizes of your channels (**experimental!**)
 - `ADJUST_POLICIES_FEES` : if false this restricts policy management (setting htlc sizes/fees) to htlc size management only
 - `ALLOW_REBALANCING`: BosBot rebalances channels which are depleted to local or remote side (500_000 sats off balance with channel size above 2M)
 - `ALLOW_DB_CLEANUP`: BosBot backs up historical payments in json files and marks them for deletion in LND's channel database (compaction required to actually free up space) for better speed every `DAYS_BETWEEN_DB_CLEANING` days
