@@ -147,7 +147,7 @@ const run = async () => {
       return null
     }
 
-    // uresolved forwards with defined path
+    // unresolved forwards with defined path
     // if (f.in_channel && f.out_channel) {
     //   log(`🕐 forwarding pending: ${from} -> ${to} of ${amt} for ${fee}`)
     // }
