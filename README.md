@@ -121,6 +121,8 @@ Completed    Channel A --> Channel B    at #5  <223 ppm rebalance succeeded for 
 
 ## **🛠 Fee Adjustment / 🚧 Max HTLC Sizes per Channel:**
 
+**Experimental Feature! Use with caution!** 
+
 BosBot is applying channel fees based on activity per hours/days or manually if defined in `settings.json`. Fees are adjusted faster upwards than downwards. Best practice: For a new channel set fees initially high and let it drop (automatically with BosBot) until forwards happen. Initial fees have to be set by LND favourably (lnd.conf, bitcoin section). Edge cases can be set in `settings.json`, e.g. no rebalancing to remote side for draining-only channels (like LN exchanges). Furthermore BosBot is setting max htlc sizes for each channel to reduce channel failures on forwards. To obfuscate a channel's balance, max htlc size is calculated to nearest limit of 2^X. 
 
 
