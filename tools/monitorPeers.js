@@ -145,10 +145,10 @@ const run = async () => {
     // done: success
     // print only real forwards, no rebalances
     if (f.is_confirmed &&
-        !from.equals('n/a') &&
-          !to.equals('n/a') &&
-         !amt.equals('n/a') &&
-         !fee.equals('n/a')) {
+        from !== 'n/a' &&
+          to !== 'n/a' &&
+         amt !== 'n/a' &&
+         fee !== 'n/a') {
       if (LOG_SUCCESSFUL_FORWARDS) {
         log(`⚡ forwarding success: ${from} -> ${to} of ${amt} for ${fee}`)
       }
