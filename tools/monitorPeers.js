@@ -88,8 +88,13 @@ const run = async () => {
   })
 
   // what to do on events for peers
-  peerEvents.on('connected', update => {
-    log(`💚 connected to ${publicKeyToAlias[update.public_key] ?? 'unknown'}`, update.public_key)
+  // addOn: show reconnected socket (might be interesting for hybrid nodes)
+  peerEvents.on('connected', async update => {
+    const { peers } = (await bos.callAPI('getPeers')) ?? {}
+    const thisPeer = peers.find(p => p.public_key === update.public_key)
+    const socket = thisPeer?.socket
+    const socket_format = socket ? `@ ${socket}` : ''
+    log(`💚 connected to ${publicKeyToAlias[update.public_key] ?? 'unknown'}`, update.public_key, `${socket_format}`)
   })
   peerEvents.on('disconnected', update => {
     log(`⛔ disconnected from ${publicKeyToAlias[update.public_key] ?? 'unknown'}`, update.public_key)
