@@ -130,10 +130,10 @@ const run = async () => {
         const msg = [`🚨 forwarding failure: ${from} -> ${to} of ${amt} for ${fee}`]
 
         if (f.internal_failure && f.internal_failure !== 'NO_DETAIL') {
-          msg.push(`      internal failure: ${f.internal_failure}`)
+          msg.push(`    internal failure: ${f.internal_failure}`)
         }
         if (f.external_failure && f.external_failure !== 'NO_DETAIL') {
-          msg.push(`      external failure: ${f.external_failure}`)
+          msg.push(`    external failure: ${f.external_failure}`)
         }
 
         log(msg.join('\n'))
