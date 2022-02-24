@@ -416,7 +416,7 @@ Logs your and your peers' activity and forwards: graph policy updates of connect
 ````
 ⛔ disconnected from <alias> <pubkey>
 
-💚 connected to <alias> <pubkey>
+💚 connected to <alias> <pubkey> @ <address:port>
 
 📣 remote update for peer <alias> <pubkey>
   fee_rate: 222 -> 111
