@@ -83,7 +83,7 @@ const run = async () => {
     lastPolicies = await bos.getNodeChannels()
   })
   graphEvents.on('error', () => {
-    log('peer events error')
+    log('graph events error')
     process.exit(1)
   })
 
