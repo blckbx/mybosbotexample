@@ -203,7 +203,7 @@ const run = async () => {
     const is_private = f.is_private ? 'yes' : 'no'
     const is_force_close = (f.is_local_force_close || f.is_remote_force_close) ? 'yes' : 'no'
     const is_coop_close = f.is_cooperative_close ? 'yes' : 'no'
-    const initiator = (f.is_force_close && f.is_local_force_close) ? 'local' : 'remote'
+    const initiator = ((f.is_force_close && f.is_local_force_close) ? 'local' : 'remote') || 'n/a'
     log(`🥀 channel closed:
     remote_pubkey: ${f.partner_public_key}
     alias: ${publicKeyToAlias[f.partner_public_key]}
