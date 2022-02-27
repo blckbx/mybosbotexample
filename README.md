@@ -446,6 +446,30 @@ Logs your and your peers' activity and forwards: graph policy updates of connect
     internal failure: HTLC_ADD_FAILED
 
 ⚡ forwarding success: <alias1> -> <alias2> of x sats for x fee
+
+🔗 block height: xxxxxx | id: 00000000000000000001111111111111111111111111111111111111
+
+🌱 channel opening: 11111111111111111111111111111111:1
+
+🌱 channel opened: 
+    remote_pubkey: xxx
+    channel_id: yyyyyxyyyyxy
+    capacity: 1_000_000.000 sats 
+    funding_tx: 11111111111111111111111111111111111111:1
+    is_private: no
+    initiator: remote
+    
+🥀 channel closed:
+    remote_pubkey: xxx
+    alias: xxx
+    channel_id: yyyyyxyyyyxy
+    capacity: 1_000_000.000 sats
+    local: 500_000.000 | 500_000 :remote
+    funding_tx: 11111111111111111111111111111111111111:1
+    is_private: no
+    is_force_close: no 
+    force_close_initiator: n/a
+    is_coop_close: yes
 ````
 
 ___________________________________________________________
