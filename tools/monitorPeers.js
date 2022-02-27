@@ -36,7 +36,8 @@ const run = async () => {
   const graphEvents = await lnService.subscribeToGraph({ lnd })
   const peerEvents = await lnService.subscribeToPeers({ lnd })
   const forwardEvents = await lnService.subscribeToForwards({ lnd })
-  const blockEvents = await lnService.subscribeToBlocks({ lnd })  
+  const blockEvents = await lnService.subscribeToBlocks({ lnd })
+  const chanEvents = await lnService.subscribeToChannels({ lnd })  
 
   // what to do on events for graph (that includes my node)
   graphEvents.on('channel_updated', async update => {
@@ -182,7 +183,43 @@ const run = async () => {
     log('block events error')
     process.exit(1)
   }) 
-  
+
+  // channel events: channel opening/opened/closed
+  chanEvents.on('channel_opened', async f => {
+    const is_private = f.is_private ? 'yes' : 'no'
+    const initiator = f.is_partner_initiated ? 'remote' : 'local'
+    log(`🌱 channel opened: 
+    remote_pubkey: ${f.partner_public_key}
+    channel_id: ${f.id}
+    capacity: ${pretty(f.capacity, 3)} sats 
+    funding_tx: ${f.transaction_id}:${f.transaction_vout}
+    is_private: ${is_private}
+    initiator: ${initiator}`)
+  })
+  chanEvents.on('channel_opening', async f => {
+    log(`🌱 channel opening: ${f.transaction_id}:${f.transaction_vout}`)
+  })
+  chanEvents.on('channel_closed', async f => {
+    const is_private = f.is_private ? 'yes' : 'no'
+    const is_force_close = (f.is_local_force_close || f.is_remote_force_close) ? 'yes' : 'no'
+    const is_coop_close = f.is_cooperative_close ? 'yes' : 'no'
+    const initiator = (f.is_force_close && f.is_local_force_close) ? 'local' : 'remote'
+    log(`🥀 channel closed:
+    remote_pubkey: ${f.partner_public_key}
+    alias: ${publicKeyToAlias[f.partner_public_key]}
+    channel_id: ${f.id}
+    capacity: ${pretty(f.capacity, 3)} sats
+    local: ${pretty(f.final_local_balance, 3)} | ${pretty((f.capacity - f.final_local_balance), 3)} :remote
+    funding_tx: ${f.transaction_id}:${f.transaction_vout}
+    is_private: ${is_private}
+    is_force_close: ${is_force_close} 
+    force_close_initiator: ${initiator}
+    is_coop_close: ${is_coop_close}`)
+  })
+  chanEvents.on('error', () => {
+    log('chan events error')
+    process.exit(1)
+  })
   
   log('listening for events...')
 }
