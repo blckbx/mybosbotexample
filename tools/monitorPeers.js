@@ -36,6 +36,7 @@ const run = async () => {
   const graphEvents = await lnService.subscribeToGraph({ lnd })
   const peerEvents = await lnService.subscribeToPeers({ lnd })
   const forwardEvents = await lnService.subscribeToForwards({ lnd })
+  const blockEvents = await lnService.subscribeToBlocks({ lnd })  
 
   // what to do on events for graph (that includes my node)
   graphEvents.on('channel_updated', async update => {
@@ -173,6 +174,16 @@ const run = async () => {
     process.exit(1)
   })
 
+  // block events: new block height, new block hash
+  blockEvents.on('block', async f => {
+    log(`🔗 block height: ${f.height} | id: ${f.id}`)
+  })
+  blockEvents.on('error', () => {
+    log('block events error')
+    process.exit(1)
+  }) 
+  
+  
   log('listening for events...')
 }
 const log = (...args) =>
