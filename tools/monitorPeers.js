@@ -39,7 +39,11 @@ const run = async () => {
   const blockEvents = await lnService.subscribeToBlocks({ lnd })
   const chanEvents = await lnService.subscribeToChannels({ lnd })  
 
+  
+  // events
+    
   // what to do on events for graph (that includes my node)
+  // https://github.com/alexbosworth/ln-service#subscribetograph
   graphEvents.on('channel_updated', async update => {
     if (!update.public_keys.includes(public_key)) return null
     const remote_key = update.public_keys.find(v => v !== public_key)
@@ -49,7 +53,6 @@ const run = async () => {
     const before = lastPolicies[update.id]?.[whoUpdated]
 
     // summarize changes
-    // https://github.com/alexbosworth/ln-service#subscribetograph
     const updates = []
     const changes = {}
     for (const prop of [
@@ -90,7 +93,8 @@ const run = async () => {
   })
 
   // what to do on events for peers
-  // addOn: show reconnected socket (might be interesting for hybrid nodes)
+  // addon: show reconnected socket (might be interesting for hybrid nodes)
+  // https://github.com/alexbosworth/ln-service#subscribetopeers    
   peerEvents.on('connected', async update => {
     const { peers } = (await bos.callAPI('getPeers')) ?? {}
     const thisPeer = peers.find(p => p.public_key === update.public_key)
@@ -107,6 +111,7 @@ const run = async () => {
   })
 
   // what to do for forwards
+  // https://github.com/alexbosworth/ln-service#subscribetoforwards  
   const pastForwardEvents = {}
   forwardEvents.on('forward', f => {
     // have to store forwarding events amounts under unique id
@@ -176,6 +181,7 @@ const run = async () => {
   })
 
   // block events: new block height, new block hash
+  // https://github.com/alexbosworth/ln-service#subscribetoblocks  
   blockEvents.on('block', async f => {
     log(`🔗 block height: ${f.height} | id: ${f.id}`)
   })
@@ -185,6 +191,7 @@ const run = async () => {
   }) 
 
   // channel events: channel opening/opened/closed
+  // https://github.com/alexbosworth/ln-service#subscribetochannels  
   chanEvents.on('channel_opened', async f => {
     const is_private = f.is_private ? 'yes' : 'no'
     const initiator = f.is_partner_initiated ? 'remote' : 'local'
@@ -201,20 +208,36 @@ const run = async () => {
   })
   chanEvents.on('channel_closed', async f => {
     const is_private = f.is_private ? 'yes' : 'no'
-    const is_force_close = (f.is_local_force_close || f.is_remote_force_close) ? 'yes' : 'no'
-    const is_coop_close = f.is_cooperative_close ? 'yes' : 'no'
-    const initiator = ((f.is_force_close && f.is_local_force_close) ? 'local' : 'remote') || 'n/a'
-    log(`🥀 channel closed:
-    remote_pubkey: ${f.partner_public_key}
-    alias: ${publicKeyToAlias[f.partner_public_key]}
-    channel_id: ${f.id}
-    capacity: ${pretty(f.capacity, 3)} sats
-    local: ${pretty(f.final_local_balance, 3)} | ${pretty((f.capacity - f.final_local_balance), 3)} :remote
-    funding_tx: ${f.transaction_id}:${f.transaction_vout}
-    is_private: ${is_private}
-    is_force_close: ${is_force_close} 
-    force_close_initiator: ${initiator}
-    is_coop_close: ${is_coop_close}`)
+    
+    if (f.is_force_close) {
+      
+      const force_initiator = (f.is_local_force_close ? 'local' : 'remote') || 'n/a'
+
+      log(`🥀 channel force-closed:
+      alias: ${publicKeyToAlias[f.partner_public_key]}
+      remote_pubkey: ${f.partner_public_key}
+      channel_id: ${f.id}
+      force_close_initiator: ${force_initiator}      
+      capacity: ${pretty(f.capacity, 0)} sats
+      local: ${pretty(f.final_local_balance, 0)} sats | ${pretty((f.capacity - f.final_local_balance), 0)} sats :remote
+      funding_tx: ${f.transaction_id}:${f.transaction_vout}
+      is_private: ${is_private}`)
+
+    } else {
+
+      const coop_initiator = (f[is_partner_closed] ? 'remote' : 'local') || 'n/a'
+
+      log(`🥀 channel coop-closed:
+      alias: ${publicKeyToAlias[f.partner_public_key]}
+      remote_pubkey: ${f.partner_public_key}
+      channel_id: ${f.id}
+      coop_initiator: ${coop_initiator}
+      capacity: ${pretty(f.capacity, 0)} sats
+      local: ${pretty(f.final_local_balance, 0)} sats | ${pretty((f.capacity - f.final_local_balance), 0)} sats :remote
+      funding_tx: ${f.transaction_id}:${f.transaction_vout}
+      is_private: ${is_private}`)
+
+    }
   })
   chanEvents.on('error', () => {
     log('chan events error')
@@ -223,6 +246,8 @@ const run = async () => {
   
   log('listening for events...')
 }
+
+
 const log = (...args) =>
   setImmediate(() => {
     const msg = [getDate(), ...args, '\n'].join(' ')
