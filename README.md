@@ -459,17 +459,26 @@ Logs your and your peers' activity and forwards: graph policy updates of connect
     is_private: no
     initiator: remote
     
-🥀 channel closed:
-    remote_pubkey: xxx
+🥀 channel coop-closed:
     alias: xxx
+    remote_pubkey: xxx
     channel_id: yyyyyxyyyyxy
+    coop_initiator: local | remote
     capacity: 1_000_000.000 sats
-    local: 500_000.000 | 500_000 :remote
+    local: 500_000 | 500_000 :remote
     funding_tx: 11111111111111111111111111111111111111:1
     is_private: no
-    is_force_close: no 
-    force_close_initiator: n/a
-    is_coop_close: yes
+
+🥀 channel force-closed:
+    alias: xxx
+    remote_pubkey: xxx
+    channel_id: yyyyyxyyyyxy
+    force_close_initiator: local | remote
+    capacity: 1_000_000.000 sats
+    local: 500_000 | 500_000 :remote
+    funding_tx: 11111111111111111111111111111111111111:1
+    is_private: no   
+
 ````
 
 ___________________________________________________________
