@@ -478,7 +478,6 @@ Logs your and your peers' activity and forwards: graph policy updates of connect
     local: 500_000 | 500_000 :remote
     funding_tx: 11111111111111111111111111111111111111:1
     is_private: no   
-
 ````
 
 ___________________________________________________________
