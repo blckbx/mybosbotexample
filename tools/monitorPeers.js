@@ -102,7 +102,8 @@ const run = async () => {
     var alias_format = publicKeyToAlias[update.public_key] ?? 'unknown'
     // if non-peer, try to fetch non-peer's alias from graph
     if (alias_format === 'unknown') {
-      alias_format = (await bos.callAPI('getNode', { public_key: update.public_key, is_omitting_channels: true }))?.alias ?? 'unknown'
+      // alias_format = (await bos.callAPI('getNode', { public_key: update.public_key, is_omitting_channels: true }))?.alias ?? 'unknown'
+      alias_format = (await bos.getNodeFromGraph({ public_key: update.public_key }))?.alias ?? 'unknown'
     }
 
     // get peer's current socket
@@ -117,7 +118,8 @@ const run = async () => {
     var alias_format = publicKeyToAlias[update.public_key] ?? 'unknown'
     // if non-peer, try to fetch non-peer's alias from graph
     if (alias_format === 'unknown') {
-      alias_format = (await bos.callAPI('getNode', { public_key: update.public_key, is_omitting_channels: true }))?.alias ?? 'unknown'
+      // alias_format = (await bos.callAPI('getNode', { public_key: update.public_key, is_omitting_channels: true }))?.alias ?? 'unknown'
+      alias_format = (await bos.getNodeFromGraph({ public_key: update.public_key }))?.alias ?? 'unknown'
     }
     log(`⛔ disconnected from ${alias_format}`, update.public_key)
   })
