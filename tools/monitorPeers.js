@@ -1,5 +1,6 @@
 // logs peer disconnects/connects and graph policy updates (fee rates n stuff) in our channels
 // also logs forwarding successes and failures w/ reason if provided
+// and block updates and channel opening/closings
 
 import fs from 'fs'
 import bos from '../bos.js'
@@ -94,16 +95,31 @@ const run = async () => {
 
   // what to do on events for peers
   // addon: show reconnected socket (might be interesting for hybrid nodes)
-  // https://github.com/alexbosworth/ln-service#subscribetopeers    
+  // https://github.com/alexbosworth/ln-service#subscribetopeers  
   peerEvents.on('connected', async update => {
-    const { peers } = (await bos.callAPI('getPeers')) ?? {}
+
+    // get alias from direct peers table
+    var alias_format = publicKeyToAlias[update.public_key] ?? 'unknown'
+    // if non-peer, try to fetch non-peer's alias from graph
+    if (alias_format === 'unknown') {
+      alias_format = (await bos.callAPI('getNode', { public_key: update.public_key, is_ommitting_channels: true }))?.alias ?? 'unknown'
+    }
+
+    // get peer's current socket
+    const { peers } = await bos.callAPI('getPeers') ?? {}
     const thisPeer = peers.find(p => p.public_key === update.public_key)
-    const socket = thisPeer?.socket
-    const socket_format = socket ? `@ ${socket}` : ''
-    log(`💚 connected to ${publicKeyToAlias[update.public_key] ?? 'unknown'}`, update.public_key, `${socket_format}`)
+    const socket_format = thisPeer?.socket ? `@ ${thisPeer?.socket}` : ''
+
+    log(`💚 connected to ${alias_format}`, update.public_key, `${socket_format}`)
   })
-  peerEvents.on('disconnected', update => {
-    log(`⛔ disconnected from ${publicKeyToAlias[update.public_key] ?? 'unknown'}`, update.public_key)
+  peerEvents.on('disconnected', async update => {
+    // get alias from direct peers table
+    var alias_format = publicKeyToAlias[update.public_key] ?? 'unknown'
+    // if non-peer, try to fetch non-peer's alias from graph
+    if (alias_format === 'unknown') {
+      alias_format = (await bos.callAPI('getNode', { public_key: update.public_key, is_ommitting_channels: true }))?.alias ?? 'unknown'
+    }
+    log(`⛔ disconnected from ${alias_format}`, update.public_key)
   })
   peerEvents.on('error', () => {
     log('peer events error')
