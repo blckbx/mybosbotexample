@@ -96,32 +96,31 @@ const run = async () => {
   // what to do on events for peers
   // addon: show reconnected socket (might be interesting for hybrid nodes)
   // https://github.com/alexbosworth/ln-service#subscribetopeers  
-  peerEvents.on('connected', async update => {
-
+  peerEvents.on('connected', async update => { 
     // get alias from direct peers table
-    var alias_format = publicKeyToAlias[update.public_key] ?? 'unknown'
+    const pkey = update.public_key
+    var alias_format = publicKeyToAlias[pkey] ?? 'unknown'
     // if non-peer, try to fetch non-peer's alias from graph
     if (alias_format === 'unknown') {
-      // alias_format = (await bos.callAPI('getNode', { public_key: update.public_key, is_omitting_channels: true }))?.alias ?? 'unknown'
-      alias_format = (await bos.getNodeFromGraph({ public_key: update.public_key }))?.alias ?? 'unknown'
+      alias_format = (await bos.getNodeFromGraph({ public_key: pkey }))?.alias ?? 'unknown'
     }
 
     // get peer's current socket
     const { peers } = await bos.callAPI('getPeers') ?? {}
-    const thisPeer = peers.find(p => p.public_key === update.public_key)
+    const thisPeer = peers.find(p => p.public_key === pkey)
     const socket_format = thisPeer?.socket ? `@ ${thisPeer?.socket}` : ''
 
-    log(`💚 connected to ${alias_format}`, update.public_key, `${socket_format}`)
+    log(`💚 connected to ${alias_format}`, pkey, `${socket_format}`)
   })
   peerEvents.on('disconnected', async update => {
+    const pkey = update.public_key
     // get alias from direct peers table
-    var alias_format = publicKeyToAlias[update.public_key] ?? 'unknown'
+    var alias_format = publicKeyToAlias[pkey] ?? 'unknown'
     // if non-peer, try to fetch non-peer's alias from graph
     if (alias_format === 'unknown') {
-      // alias_format = (await bos.callAPI('getNode', { public_key: update.public_key, is_omitting_channels: true }))?.alias ?? 'unknown'
-      alias_format = (await bos.getNodeFromGraph({ public_key: update.public_key }))?.alias ?? 'unknown'
+      alias_format = (await bos.getNodeFromGraph({ public_key: pkey }))?.alias ?? 'unknown'
     }
-    log(`⛔ disconnected from ${alias_format}`, update.public_key)
+    log(`⛔ disconnected from ${alias_format}`, pkey)
   })
   peerEvents.on('error', () => {
     log('peer events error')
