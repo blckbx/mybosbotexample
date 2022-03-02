@@ -492,7 +492,7 @@ const callAPI = async (method, choices = {}, log = false) => {
     return copy(res) || {}
     // empty object if nothing good yet without caught errors
   } catch (e) {
-    logDim(`${getDate()} bos.callAPI('${method}', ${JSON.stringify(choices)}) aborted:`, e?.message)
+    log && logDim(`${getDate()} bos.callAPI('${method}', ${JSON.stringify(choices)}) aborted:`, e?.message)
     return null
   }
 }
