@@ -37,7 +37,7 @@ Tested configuration:
 - `DAYS_FOR_FEE_REDUCTION`: min days of no routing before allowing fee reduction
 - `ROUTING_STOPPING_FEE_RATE`: ppm fees for drained channels
 - `MAX_PARALLEL_REBALANCES`: max count of parallel rebalances (high usage of resouces!)
-- `TELEGRAM_PROXY_HOST` & `TELEGRAM_PROXY_PORT`: add a (Tor) proxy for messaging with Telegram bot (recommended)
+- `TELEGRAM_PROXY_HOST` & `TELEGRAM_PROXY_PORT`: add a (Tor) proxy to communicate with Telegram bot (recommended)
 
 6) Start Commands:
 
