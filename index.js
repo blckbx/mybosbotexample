@@ -35,6 +35,8 @@ const ALLOW_DB_CLEANUP = env.ALLOW_DB_CLEANUP === 'false' ? false : true
 // Tor Proxy for Telegram Bot
 const TELEGRAM_PROXY_HOST = env.TELEGRAM_PROXY_HOST || ''
 const TELEGRAM_PROXY_PORT = env.TELEGRAM_PROXY_PORT || ''
+// path to channel.db for size
+const DB_PATH = env.DB_PATH || ''
 // time to sleep between trying a bot step again
 const MINUTES_BETWEEN_STEPS = parseFloat(env.MINUTES_BETWEEN_STEPS) || 10
 // how far back to look for routing stats, must be longer than any other DAYS setting
@@ -165,7 +167,6 @@ const fuzzyAmount = (amount, fraction = 0.21) => trunc(amount * (1 - fraction * 
 const AVOID_LIST = []
 
 // ## FILESYSTEM SETTINGS
-const DB_PATH = env.DB_PATH || '~/.lnd/data/graph/mainnet/channel.db'
 const SNAPSHOTS_PATH = './snapshots'
 const PEERS_LOG_PATH = './peers'
 const LOG_FILES = './logs'
