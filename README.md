@@ -33,11 +33,14 @@ Tested configuration:
 - `SAFETY_MARGIN`: proportional safety ppm margin
 - `SAFETY_MARGIN_FLAT_MAX`: maximum flat safety margin (below this limit: proportional)
 - `NUDGE_UP`: max size of fee adjustment upward
-- `NUDGE_DOWN`: max size of fee adjustment downward
+- `NUDGE_DOWN_PER_DAY`: max size of fee adjustment downward
 - `DAYS_FOR_FEE_REDUCTION`: min days of no routing before allowing fee reduction
 - `ROUTING_STOPPING_FEE_RATE`: ppm fees for drained channels
 - `MAX_PARALLEL_REBALANCES`: max count of parallel rebalances (high usage of resouces!)
 - `TELEGRAM_PROXY_HOST` & `TELEGRAM_PROXY_PORT`: add a (Tor) proxy to communicate with Telegram bot (recommended)
+- `DB_PATH`: adjust path to channel.db file
+- `MINUTES_BETWEEN_BOS_RECONNECTS`: run `bos reconnect` every x minutes
+- `MINUTES_BETWEEN_SIMPLE_RECONNECTS`: run simple reconnect every x minutes
 
 6) Start Commands:
 
@@ -194,7 +197,7 @@ generatePeersSnapshots()
 
 ## **🔌 BoS Reconnect / Simple Reconnect:**
 
-Checks frequently (`MINUTES_BETWEEN_RECONNECTS` / `MINUTES_BETWEEN_SIMPLE_RECONNECTS`) for offline / inactive peers and tries to reconnect them with `bos reconnect` (6h+ interval recommended) or `simple reconnect`(for the quick reconnect of inactive peers and/or disabled channels). Additionally a Telegram message containing stats of successful and/or unsuccessful reconnects is being sent:
+Checks frequently (`MINUTES_BETWEEN_BOS_RECONNECTS` / `MINUTES_BETWEEN_SIMPLE_RECONNECTS`) for offline / inactive peers and tries to reconnect them with `bos reconnect` (6h+ interval recommended) or `simple reconnect`(for the quick reconnect of inactive peers and/or disabled channels). Additionally a Telegram message containing stats of successful and/or unsuccessful reconnects is being sent:
 ````
 🔌 Offline Statistics (BoS Reconnect):
 3 / 10 peers offline (30%):
@@ -231,6 +234,8 @@ earned: 2000
 spent: 1000
 net: 1000
 routing rewards: (n: 100) min: 1, 1/4th: 2.5, median: 5.5, avg: 20.5, 3/4th: 21, max: 210.0
+channel.db size: x_xxx MB
+channel states size est: x_xxx MB
 ````
 
 
