@@ -227,7 +227,7 @@ Checks frequently (`MINUTES_BETWEEN_BOS_RECONNECTS` / `MINUTES_BETWEEN_SIMPLE_RE
 
 ## **🌱 Statistics for 7 days:**
 
-On every run BosBot messages some statistics about earned, spent and net sats for the last 7 days. Routing rewards are displayed in min, 1/4th, median, average, 3/4th and max amounts as well as the overall count of routings in this time frame:
+On every run BosBot messages some statistics about earned, spent and net sats for the last 7 days. Routing rewards are displayed in min, 1/4th, median, average, 3/4th and max amounts as well as the overall count of routings in this time frame. In addition, current channel.db size and an estimation of channel states is shown if configured:
 ````
 🌱 7d Statistics:
 earned: 2000
