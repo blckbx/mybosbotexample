@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "npm link balanceofsatoshis && node --optimize_for_size --max_old_space_size=400 --expose_gc index.js",
-    "limiter": "npm link balanceofsatoshis && node --optimize_for_size --max_old_space_size=200 --expose_gc tools/htlcLimiter.js | tee -a limiter.log",
+    "limiter": "npm link balanceofsatoshis && node --optimize_for_size --max_old_space_size=200 --expose_gc tools/htlcLimiter.js",
     "monitor": "npm link balanceofsatoshis && node --optimize_for_size --max_old_space_size=200 --expose_gc tools/monitorPeers.js",
     "visualize": "npm link balanceofsatoshis && node --optimize_for_size --max_old_space_size=200 tools/visualize.js",
     "nodesinpaths": "npm link balanceofsatoshis && node --optimize_for_size --max_old_space_size=200 tools/nodesinpaths.js",
