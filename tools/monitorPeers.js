@@ -242,7 +242,7 @@ const run = async () => {
 
     } else {
 
-      const coop_initiator = (f[is_partner_closed] ? 'remote' : 'local') || 'n/a'
+      const coop_initiator = (f.is_partner_closed ? 'remote' : 'local') || 'n/a'
 
       log(`🥀 channel coop-closed:
       alias: ${publicKeyToAlias[f.partner_public_key]}
