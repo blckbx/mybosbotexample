@@ -107,82 +107,86 @@ const initialize = async (showLogs = true, fileLogs = true, auth = undefined) =>
 const decideOnForward = ({ f }) => {
   if (settings.stop) return f.reject() // f.reject() // if stop all new forwards
 
-  // gets fee rate group for this forward request
-  const group = getGroup(getFee(f))
+  try {
+    // gets fee rate group for this forward request
+    const group = getGroup(getFee(f))
 
-  // how many unsettled in this fee group in latest byChannel snapshot for both channels in forward request
-  const inboundFeeGroupCount = byChannel[f.in_channel]?.[group] ?? 0
-  const outboundFeeGroupCount = byChannel[f.out_channel]?.[group] ?? 0
+    // how many unsettled in this fee group in latest byChannel snapshot for both channels in forward request
+    const inboundFeeGroupCount = byChannel[f.in_channel]?.[group] ?? 0
+    const outboundFeeGroupCount = byChannel[f.out_channel]?.[group] ?? 0
 
-  // count unsettled htlcs below amount of sats unsettled for in and out
-  // only matters if below limit
-  const isBelowLimit = f.tokens < SATS_LIMIT
-  // add up all the small-amount htlcs in the channel htlc is coming from
-  const inboundSmallSizeCount = isBelowLimit
-    ? -1
-    : byChannel[f.in_channel]?.raw?.reduce((count, pending) => {
-        const isBelowSizeLimit = pending.tokens < SATS_LIMIT
-        return count + (isBelowSizeLimit ? 1 : 0)
-      }, 0) ?? 0
-  // add up all the small-amount htlcs in the channel htlc is asking to go to
-  const outboundSmallSizeCount = isBelowLimit
-    ? -1
-    : byChannel[f.out_channel]?.raw?.reduce((count, pending) => {
-        const isBelowSizeLimit = pending.tokens < SATS_LIMIT
-        return count + (isBelowSizeLimit ? 1 : 0)
-      }, 0) ?? 0
+    // count unsettled htlcs below amount of sats unsettled for in and out
+    // only matters if below limit
+    const isBelowLimit = f.tokens < SATS_LIMIT
+    // add up all the small-amount htlcs in the channel htlc is coming from
+    const inboundSmallSizeCount = isBelowLimit
+      ? -1
+      : byChannel[f.in_channel]?.raw?.reduce((count, pending) => {
+          const isBelowSizeLimit = pending.tokens < SATS_LIMIT
+          return count + (isBelowSizeLimit ? 1 : 0)
+        }, 0) ?? 0
+    // add up all the small-amount htlcs in the channel htlc is asking to go to
+    const outboundSmallSizeCount = isBelowLimit
+      ? -1
+      : byChannel[f.out_channel]?.raw?.reduce((count, pending) => {
+          const isBelowSizeLimit = pending.tokens < SATS_LIMIT
+          return count + (isBelowSizeLimit ? 1 : 0)
+        }, 0) ?? 0
 
-  // allow at least ALLOWED_PER_GROUP_MIN htlcs per group, and then depending on group and direction maybe more
-  const inboundFeeGroupLimit = max(ALLOWED_PER_GROUP_MIN, ALLOWED_PER_GROUP_IN(group))
-  const outboundFeeGroupLimit = max(ALLOWED_PER_GROUP_MIN, ALLOWED_PER_GROUP_OUT(group))
+    // allow at least ALLOWED_PER_GROUP_MIN htlcs per group, and then depending on group and direction maybe more
+    const inboundFeeGroupLimit = max(ALLOWED_PER_GROUP_MIN, ALLOWED_PER_GROUP_IN(group))
+    const outboundFeeGroupLimit = max(ALLOWED_PER_GROUP_MIN, ALLOWED_PER_GROUP_OUT(group))
 
-  // check if for this fee group there's enough available slots in both incoming and outgoing channel for request
-  const allowedBasedOnFee = inboundFeeGroupCount < inboundFeeGroupLimit && outboundFeeGroupCount < outboundFeeGroupLimit
+    // check if for this fee group there's enough available slots in both incoming and outgoing channel for request
+    const allowedBasedOnFee = inboundFeeGroupCount < inboundFeeGroupLimit && outboundFeeGroupCount < outboundFeeGroupLimit
 
-  // if below limit, check if there's enough available slots for below limit htlcs in incoming and outgoing channels (above sat limit is always true)
-  const allowedBasedOnSize =
-    !isBelowLimit ||
-    (inboundSmallSizeCount < ALLOWED_BELOW_LIMIT_IN && outboundSmallSizeCount < ALLOWED_BELOW_LIMIT_OUT)
+    // if below limit, check if there's enough available slots for below limit htlcs in incoming and outgoing channels (above sat limit is always true)
+    const allowedBasedOnSize =
+      !isBelowLimit ||
+      (inboundSmallSizeCount < ALLOWED_BELOW_LIMIT_IN && outboundSmallSizeCount < ALLOWED_BELOW_LIMIT_OUT)
 
-  // if both conditions pass, allow htlc
-  const allowed = allowedBasedOnFee && allowedBasedOnSize
+    // if both conditions pass, allow htlc
+    const allowed = allowedBasedOnFee && allowedBasedOnSize
 
-  // DEBUG &&
-  //   printout(
-  //     stringify(
-  //       {
-  //         isBelowLimit,
-  //         inboundFeeGroupCount,
-  //         outboundFeeGroupCount,
-  //         inboundFeeGroupLimit,
-  //         outboundFeeGroupLimit,
-  //         inboundSmallSizeCount,
-  //         outboundSmallSizeCount,
-  //         group,
-  //         allowedBasedOnFee,
-  //         allowedBasedOnSize
-  //       },
-  //       fixJSON
-  //     )
-  //   )
+    // DEBUG &&
+    //   printout(
+    //     stringify(
+    //       {
+    //         isBelowLimit,
+    //         inboundFeeGroupCount,
+    //         outboundFeeGroupCount,
+    //         inboundFeeGroupLimit,
+    //         outboundFeeGroupLimit,
+    //         inboundSmallSizeCount,
+    //         outboundSmallSizeCount,
+    //         group,
+    //         allowedBasedOnFee,
+    //         allowedBasedOnSize
+    //       },
+    //       fixJSON
+    //     )
+    //   )
 
-  // snapshots aren't updated real time, so we update counts for tx we allow manually
-  if (allowed) {
-    // this htlc will be in 2 channels so add to their counters
-    if (!byChannel[f.in_channel]) byChannel[f.in_channel] = {}
-    if (!byChannel[f.out_channel]) byChannel[f.out_channel] = {}
-    byChannel[f.in_channel][group] = inboundFeeGroupCount + 1
-    byChannel[f.out_channel][group] = outboundFeeGroupCount + 1
-    pendingForwardCount += 2
-    outgoingCount++
-    incomingCount++
+    // snapshots aren't updated real time, so we update counts for tx we allow manually
+    if (allowed) {
+      // this htlc will be in 2 channels so add to their counters
+      if (!byChannel[f.in_channel]) byChannel[f.in_channel] = {}
+      if (!byChannel[f.out_channel]) byChannel[f.out_channel] = {}
+      byChannel[f.in_channel][group] = inboundFeeGroupCount + 1
+      byChannel[f.out_channel][group] = outboundFeeGroupCount + 1
+      pendingForwardCount += 2
+      outgoingCount++
+      incomingCount++
+    }
+
+    const result = allowed ? f.accept() : f.reject()
+
+    announce(f, allowed)
+
+    return result // result
+  } catch(e) {
+    return f.reject()
   }
-
-  const result = allowed ? f.accept() : f.reject()
-
-  announce(f, allowed)
-
-  return result // result
 }
 
 // loop that updates all channel unsettled tx counts & more rarely checks fee policy
