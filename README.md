@@ -418,6 +418,8 @@ $ node getCapacityFees
 
 Logs your and your peers' activity and forwards: graph policy updates of connected channels (base_fee_mtokens, cltv_delta, fee_rate, is_disabled, max_htlc_mtokens, min_htlc_mtokens, updated_at), peers disconnects/connects, forwardings (success/failures with reason, if provided). Start the listener in a separate terminal window (recommended).
 
+New feature: Block private channel opening requests on-the-fly. Running `monitorPeers` set `ALLOW_PRIVATE_CHANNELS` to `false` will intercept channel opening requests from peers and reject channels which contain the `private` flag. 
+
 ````
 ⛔ disconnected from <alias> <pubkey>
 
@@ -454,7 +456,17 @@ Logs your and your peers' activity and forwards: graph policy updates of connect
 
 🔗 block height: xxxxxx | id: 00000000000000000001111111111111111111111111111111111111
 
-🌱 channel opening: 11111111111111111111111111111111:1
+🌱 channel opening accepted:
+    alias: xxx
+    remote_pubkey: xxx
+    channel_id: yyyyxyyyyxy
+    capacity: xxx sats
+    
+🚫 private channel rejected:
+    alias: xxx
+    remote_pubkey: xxx
+    channel_id: yyyyxyyyyxy
+    capacity: xxx sats
 
 🌱 channel opened: 
     remote_pubkey: xxx
