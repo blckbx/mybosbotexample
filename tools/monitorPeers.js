@@ -20,6 +20,9 @@ const WHEN_LOG_FAILED_HTLCS = forward =>
 // shows forwards that confirm
 const LOG_SUCCESSFUL_FORWARDS = true
 
+// allow or deny incomingprivate channel requests
+const ALLOW_PRIVATE_CHANNELS = true
+
 // sometimes just timestamp is updated, this ignores those gossip updates
 const IGNORE_GOSSIP_UPDATES_WITHOUT_SETTING_CHANGES = true
 
@@ -38,7 +41,8 @@ const run = async () => {
   const peerEvents = await lnService.subscribeToPeers({ lnd })
   const forwardEvents = await lnService.subscribeToForwards({ lnd })
   const blockEvents = await lnService.subscribeToBlocks({ lnd })
-  const chanEvents = await lnService.subscribeToChannels({ lnd })  
+  const chanEvents = await lnService.subscribeToChannels({ lnd })
+  const chanOpenEvents = await lnService.subscribeToOpenRequests({ lnd })
 
   
   // events
@@ -220,9 +224,11 @@ const run = async () => {
     is_private: ${is_private}
     initiator: ${initiator}`)
   })
+  /*
   chanEvents.on('channel_opening', async f => {
     log(`🌱 channel opening: ${f.transaction_id}:${f.transaction_vout}`)
   })
+  */
   chanEvents.on('channel_closed', async f => {
     const is_private = f.is_private ? 'yes' : 'no'
     
@@ -260,6 +266,36 @@ const run = async () => {
     log('chan events error')
     process.exit(1)
   })
+
+
+  // channelOpenRequests
+  // https://github.com/alexbosworth/ln-service#subscribetoopenrequests 
+  // ability to reject private channels
+  chanOpenEvents.on('channel_request', async f => {
+    let result
+    if(!ALLOW_PRIVATE_CHANNELS) {
+      result = f.is_private ? f.reject() : f.allowed()
+
+      if(f.is_private) {
+        log(`🚫 private channel rejected:
+        alias: ${(await bos.getNodeFromGraph({ public_key: f.partner_public_key }))?.alias ?? 'unknown'}
+        remote_pubkey: ${f.partner_public_key}
+        channel_id: ${f.id}
+        capacity: ${pretty(f.capacity, 0)} sats`
+        )
+      }
+    } else {
+      result = f.accept()
+
+      log(`🌱 channel opening accepted:
+      alias: ${(await bos.getNodeFromGraph({ public_key: f.partner_public_key }))?.alias ?? 'unknown'}
+      remote_pubkey: ${f.partner_public_key}
+      channel_id: ${f.id}
+      capacity: ${pretty(f.capacity, 0)} sats`)
+    }
+    return result
+  })
+  
   
   log('listening for events...')
 }
