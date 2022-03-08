@@ -418,7 +418,7 @@ $ node getCapacityFees
 
 Logs your and your peers' activity and forwards: graph policy updates of connected channels (base_fee_mtokens, cltv_delta, fee_rate, is_disabled, max_htlc_mtokens, min_htlc_mtokens, updated_at), peers disconnects/connects, forwardings (success/failures with reason, if provided). Start the listener in a separate terminal window (recommended).
 
-New feature: Block private channel opening requests on-the-fly. Running `monitorPeers` set `ALLOW_PRIVATE_CHANNELS` to `false` will intercept channel opening requests from peers and reject channels which contain the `private` flag. 
+New features: Block private channel opening requests on-the-fly. Running `monitorPeers` set `ALLOW_PRIVATE_CHANNELS` to `false` will intercept channel opening requests from peers and reject channels which contain the `private` flag. Message any event to TG bot specified in BosBot settings. Comment out `telegramLog` commands if you get spammed a lot.
 
 ````
 ⛔ disconnected from <alias> <pubkey>
@@ -494,7 +494,15 @@ New feature: Block private channel opening requests on-the-fly. Running `monitor
     capacity: 1_000_000.000 sats
     local: 500_000 | 500_000 :remote
     funding_tx: 11111111111111111111111111111111111111:1
-    is_private: no   
+    is_private: no
+    
+📣 local update for peer <alias> <pubkey> 
+fee_rate: x -> y
+updated_at: <time1> -> <time2>
+
+📣 remote update for peer <alias> <pubkey>
+fee_rate: x -> y
+updated_at: <time1> -> <time2>
 ````
 
 ___________________________________________________________
