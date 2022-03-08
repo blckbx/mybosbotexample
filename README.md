@@ -7,7 +7,7 @@ BosBot needs Balance of Satoshi (BoS: https://github.com/alexbosworth/balanceofs
 
 Tested configuration:
 - [LND-0.14.2-beta](https://github.com/lightningnetwork/lnd/releases/tag/v0.14.2-beta)
-- [BoS 11.53.4](https://github.com/alexbosworth/balanceofsatoshis#install) 
+- [BoS 11.57.0](https://github.com/alexbosworth/balanceofsatoshis#install) 
 - [npm 8.1.3](https://gist.github.com/alexbosworth/8fad3d51f9e1ff67995713edf2d20126)
 - [NodeJS 16.14.0](https://nodejs.org)
 
@@ -425,18 +425,6 @@ New features: Block private channel opening requests on-the-fly. Running `monito
 
 💚 connected to <alias> <pubkey> @ <address:port>
 
-📣 remote update for peer <alias> <pubkey>
-  fee_rate: 222 -> 111
-  updated_at: <time1> -> <time2>
-
-📣 remote update for peer <alias> <pubkey>
-  is_disabled: 1 -> 0
-  updated_at: <time1> -> <time2>
-  
-📣 local update for peer <alias> <pubkey>
-  max_htlc_mtokens: 10000000000 -> 20000000000
-  updated_at: <time1> -> <time2>
-
 🚨 forwarding failure: <alias1> -> <alias2> of 100000.000 sats for 100.000 sats fee
     external failure: TEMPORARY_CHANNEL_FAILURE
     internal failure: INSUFFICIENT_BALANCE
@@ -471,7 +459,7 @@ New features: Block private channel opening requests on-the-fly. Running `monito
 🌱 channel opened: 
     remote_pubkey: xxx
     channel_id: yyyyyxyyyyxy
-    capacity: 1_000_000.000 sats 
+    capacity: xxx sats 
     funding_tx: 11111111111111111111111111111111111111:1
     is_private: no
     initiator: remote
@@ -481,8 +469,8 @@ New features: Block private channel opening requests on-the-fly. Running `monito
     remote_pubkey: xxx
     channel_id: yyyyyxyyyyxy
     coop_initiator: local | remote
-    capacity: 1_000_000.000 sats
-    local: 500_000 | 500_000 :remote
+    capacity: xxx sats
+    local: xxx sats | xxx sats :remote
     funding_tx: 11111111111111111111111111111111111111:1
     is_private: no
 
@@ -491,17 +479,23 @@ New features: Block private channel opening requests on-the-fly. Running `monito
     remote_pubkey: xxx
     channel_id: yyyyyxyyyyxy
     force_close_initiator: local | remote
-    capacity: 1_000_000.000 sats
-    local: 500_000 | 500_000 :remote
+    capacity: xxx sats
+    local: xxx sats | xxx sats :remote
     funding_tx: 11111111111111111111111111111111111111:1
     is_private: no
     
 📣 local update for peer <alias> <pubkey> 
+base_fee_mtokens: x -> y
 fee_rate: x -> y
+is_disabled: x -> y
+max_htlc_mtokens: x -> y
 updated_at: <time1> -> <time2>
 
 📣 remote update for peer <alias> <pubkey>
+base_fee_mtokens: x -> y
 fee_rate: x -> y
+is_disabled: x -> y
+max_htlc_mtokens: x -> y
 updated_at: <time1> -> <time2>
 ````
 
