@@ -1,14 +1,25 @@
 // logs peer disconnects/connects and graph policy updates (fee rates n stuff) in our channels
 // also logs forwarding successes and failures w/ reason if provided
 // and block updates and channel opening/closings
+// optionally send events to Telegram Bot
 
 import fs from 'fs'
+import path from 'path';
+import dotenv from 'dotenv';
 import bos from '../bos.js'
 const { lnService } = bos
 
 // --- settings ---
 
 const LOG_FILE_PATH = 'events.log'
+const SETTINGS_PATH = 'settings.json'
+// Tor Proxy for Telegram Bot
+const env = process.env
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+const TELEGRAM_PROXY_HOST = env.TELEGRAM_PROXY_HOST || ''
+const TELEGRAM_PROXY_PORT = env.TELEGRAM_PROXY_PORT || ''
+const mynode = {}
 
 // this filters what htlc fail events will be shown
 const WHEN_LOG_FAILED_HTLCS = forward =>
@@ -21,7 +32,7 @@ const WHEN_LOG_FAILED_HTLCS = forward =>
 const LOG_SUCCESSFUL_FORWARDS = true
 
 // allow or deny incomingprivate channel requests
-const ALLOW_PRIVATE_CHANNELS = true
+const ALLOW_PRIVATE_CHANNELS = false
 
 // sometimes just timestamp is updated, this ignores those gossip updates
 const IGNORE_GOSSIP_UPDATES_WITHOUT_SETTING_CHANGES = true
@@ -44,9 +55,21 @@ const run = async () => {
   const chanEvents = await lnService.subscribeToChannels({ lnd })
   const chanOpenEvents = await lnService.subscribeToOpenRequests({ lnd })
 
-  
+  // init telegram settings
+  if (fs.existsSync(SETTINGS_PATH)) {
+    mynode.settings = JSON.parse(fs.readFileSync(SETTINGS_PATH))
+  }
+  if(TELEGRAM_PROXY_HOST != '' && TELEGRAM_PROXY_PORT != '' &&
+      mynode.settings?.telegram.chat_id && mynode.settings?.telegram.token)
+  {
+    log(`bos.sayWithTelegramBot(): Connecting via proxy: socks://${TELEGRAM_PROXY_HOST}:${TELEGRAM_PROXY_PORT}`)
+  } else {
+    log(`bos.sayWithTelegramBot(): Connecting without proxy`)
+  }
+
+
   // events
-    
+
   // what to do on events for graph (that includes my node)
   // https://github.com/alexbosworth/ln-service#subscribetograph
   graphEvents.on('channel_updated', async update => {
@@ -88,10 +111,13 @@ const run = async () => {
       '\n   ',
       updates.join('\n    ')
     )
+    
+    await telegramLog(`📣 ${whoUpdated} update for peer ${publicKeyToAlias[remote_key]} ${remote_key} ${offlineStatus}\n${updates.join('\n')}`)  
 
     // update policy data
     lastPolicies = await bos.getNodeChannels()
   })
+
   graphEvents.on('error', () => {
     log('graph events error')
     process.exit(1)
@@ -100,10 +126,11 @@ const run = async () => {
   // what to do on events for peers
   // addon: show reconnected socket (might be interesting for hybrid nodes)
   // https://github.com/alexbosworth/ln-service#subscribetopeers  
-  peerEvents.on('connected', async update => { 
+  peerEvents.on('connected', async update => {
+
     // get alias from direct peers table
     const pkey = update.public_key
-    var alias_format = publicKeyToAlias[pkey] ?? 'unknown'
+    let alias_format = publicKeyToAlias[pkey] ?? 'unknown'
     // if non-peer, try to fetch non-peer's alias from graph
     if (alias_format === 'unknown') {
       alias_format = (await bos.getNodeFromGraph({ public_key: pkey }))?.alias ?? 'unknown'
@@ -114,25 +141,33 @@ const run = async () => {
     const thisPeer = peers.find(p => p.public_key === pkey)
     const socket_format = thisPeer?.socket ? `@ ${thisPeer?.socket}` : ''
 
-    log(`💚 connected to ${alias_format}`, pkey, `${socket_format}`)
+    const message = `💚 connected to ${alias_format} ${pkey} ${socket_format}`
+    log(message)
+    // await telegramLog(message)
   })
+
   peerEvents.on('disconnected', async update => {
     const pkey = update.public_key
+
     // get alias from direct peers table
-    var alias_format = publicKeyToAlias[pkey] ?? 'unknown'
+    let alias_format = publicKeyToAlias[pkey] ?? 'unknown'
     // if non-peer, try to fetch non-peer's alias from graph
     if (alias_format === 'unknown') {
       alias_format = (await bos.getNodeFromGraph({ public_key: pkey }))?.alias ?? 'unknown'
     }
-    log(`⛔ disconnected from ${alias_format}`, pkey)
+    
+    const message = `⛔ disconnected from ${alias_format} ${pkey}`
+    log(message)
+    // await telegramLog(message)
   })
+
   peerEvents.on('error', () => {
     log('peer events error')
     process.exit(1)
   })
 
   // what to do for forwards
-  // https://github.com/alexbosworth/ln-service#subscribetoforwards  
+  // https://github.com/alexbosworth/ln-service#subscribetoforwards
   const pastForwardEvents = {}
   forwardEvents.on('forward', f => {
     // have to store forwarding events amounts under unique id
@@ -171,7 +206,7 @@ const run = async () => {
     }
 
     // done: success
-    // print only real forwards, no rebalances
+    // print only real forwards, no rebalances    
     if (f.is_confirmed &&
         from !== 'n/a' &&
           to !== 'n/a' &&
@@ -185,50 +220,47 @@ const run = async () => {
       return null
     }
 
-    // unresolved forwards with defined path
-    // if (f.in_channel && f.out_channel) {
-    //   log(`🕐 forwarding pending: ${from} -> ${to} of ${amt} for ${fee}`)
-    // }
-
     // just in case too many fids in memory clean it all up above some limit
     if (Object.keys(pastForwardEvents).length >= 555) {
       Object.keys(pastForwardEvents).forEach(key => delete pastForwardEvents[key])
       log('forward id number limit hit, cleaning up RAM')
     }
   })
+
   forwardEvents.on('error', () => {
     log('forward events error')
     process.exit(1)
   })
 
   // block events: new block height, new block hash
-  // https://github.com/alexbosworth/ln-service#subscribetoblocks  
+  // https://github.com/alexbosworth/ln-service#subscribetoblocks
   blockEvents.on('block', async f => {
-    log(`🔗 block height: ${f.height} | id: ${f.id}`)
+    const message = `🔗 block height: ${f.height} | id: ${f.id}`
+    log(message)
+    // await telegramLog(message)
   })
+
   blockEvents.on('error', () => {
     log('block events error')
     process.exit(1)
   }) 
 
   // channel events: channel opening/opened/closed
-  // https://github.com/alexbosworth/ln-service#subscribetochannels  
+  // https://github.com/alexbosworth/ln-service#subscribetochannels
   chanEvents.on('channel_opened', async f => {
     const is_private = f.is_private ? 'yes' : 'no'
     const initiator = f.is_partner_initiated ? 'remote' : 'local'
-    log(`🌱 channel opened: 
+    const message = `🌱 channel opened: 
     remote_pubkey: ${f.partner_public_key}
     channel_id: ${f.id}
     capacity: ${pretty(f.capacity, 3)} sats 
     funding_tx: ${f.transaction_id}:${f.transaction_vout}
     is_private: ${is_private}
-    initiator: ${initiator}`)
+    initiator: ${initiator}`
+    log(message)
+    await telegramLog(message)
   })
-  /*
-  chanEvents.on('channel_opening', async f => {
-    log(`🌱 channel opening: ${f.transaction_id}:${f.transaction_vout}`)
-  })
-  */
+
   chanEvents.on('channel_closed', async f => {
     const is_private = f.is_private ? 'yes' : 'no'
     
@@ -236,7 +268,7 @@ const run = async () => {
       
       const force_initiator = (f.is_local_force_close ? 'local' : 'remote') || 'n/a'
 
-      log(`🥀 channel force-closed:
+      const message = `🥀 channel force-closed:
       alias: ${publicKeyToAlias[f.partner_public_key]}
       remote_pubkey: ${f.partner_public_key}
       channel_id: ${f.id}
@@ -244,13 +276,15 @@ const run = async () => {
       capacity: ${pretty(f.capacity, 0)} sats
       local: ${pretty(f.final_local_balance, 0)} sats | ${pretty((f.capacity - f.final_local_balance), 0)} sats :remote
       funding_tx: ${f.transaction_id}:${f.transaction_vout}
-      is_private: ${is_private}`)
+      is_private: ${is_private}`
+      log(message)
+      await telegramLog(message)
 
     } else {
 
       const coop_initiator = (f.is_partner_closed ? 'remote' : 'local') || 'n/a'
 
-      log(`🥀 channel coop-closed:
+      const message = `🥀 channel coop-closed:
       alias: ${publicKeyToAlias[f.partner_public_key]}
       remote_pubkey: ${f.partner_public_key}
       channel_id: ${f.id}
@@ -258,46 +292,65 @@ const run = async () => {
       capacity: ${pretty(f.capacity, 0)} sats
       local: ${pretty(f.final_local_balance, 0)} sats | ${pretty((f.capacity - f.final_local_balance), 0)} sats :remote
       funding_tx: ${f.transaction_id}:${f.transaction_vout}
-      is_private: ${is_private}`)
-
+      is_private: ${is_private}`
+      log(message)
+      await telegramLog(message)
     }
   })
+
   chanEvents.on('error', () => {
     log('chan events error')
     process.exit(1)
   })
 
-
   // channelOpenRequests
   // https://github.com/alexbosworth/ln-service#subscribetoopenrequests 
   // ability to reject private channels
   chanOpenEvents.on('channel_request', async f => {
-    let result
-    if(!ALLOW_PRIVATE_CHANNELS) {
-      result = f.is_private ? f.reject() : f.allowed()
+    try {
+      let result
+      if(!ALLOW_PRIVATE_CHANNELS) {
+        result = f.is_private ? f.reject() : f.allowed()
 
-      if(f.is_private) {
-        log(`🚫 private channel rejected:
-        alias: ${(await bos.getNodeFromGraph({ public_key: f.partner_public_key }))?.alias ?? 'unknown'}
-        remote_pubkey: ${f.partner_public_key}
-        channel_id: ${f.id}
-        capacity: ${pretty(f.capacity, 0)} sats`
-        )
-      }
-    } else {
-      result = f.accept()
-
-      log(`🌱 channel opening accepted:
+        if(f.is_private) {
+          const message = `🚫 private channel rejected:
       alias: ${(await bos.getNodeFromGraph({ public_key: f.partner_public_key }))?.alias ?? 'unknown'}
       remote_pubkey: ${f.partner_public_key}
       channel_id: ${f.id}
-      capacity: ${pretty(f.capacity, 0)} sats`)
+      capacity: ${pretty(f.capacity, 0)} sats`
+          log(message)
+          await telegramLog(message)
+        }
+      } else {
+        result = f.accept()
+
+        const message = `🌱 channel opening accepted:
+      alias: ${(await bos.getNodeFromGraph({ public_key: f.partner_public_key }))?.alias ?? 'unknown'}
+      remote_pubkey: ${f.partner_public_key}
+      channel_id: ${f.id}
+      capacity: ${pretty(f.capacity, 0)} sats`
+        log(message)
+        await telegramLog(message)
+      }
+      return result
+    } catch(e) {
+      log(`chanOpenEvents error`)
     }
-    return result
   })
-  
-  
+
+
   log('listening for events...')
+}
+
+
+// uses telegram logging if available
+const telegramLog = async message => {
+  const { token, chat_id } = mynode.settings?.telegram || {}
+  if(!token || !chat_id) return null
+  
+  let proxy
+  if(TELEGRAM_PROXY_HOST != '' && TELEGRAM_PROXY_PORT != '') { proxy = `socks://${TELEGRAM_PROXY_HOST}:${TELEGRAM_PROXY_PORT}` }
+  if (token && chat_id) await bos.sayWithTelegramBot({ token, chat_id, message, proxy })
 }
 
 
