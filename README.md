@@ -456,12 +456,6 @@ New features: Block private channel opening requests on-the-fly. Running `monito
     channel_id: yyyyxyyyyxy
     capacity: xxx sats
     
-🚫 public channel rejected (reason: MinChanSize):
-    alias: xxx
-    remote_pubkey: xxx
-    channel_id: yyyyxyyyyxy
-    capacity: xxx sats (MinChanSize: xxx)
-
 🌱 channel opened: 
     remote_pubkey: xxx
     channel_id: yyyyyxyyyyxy
