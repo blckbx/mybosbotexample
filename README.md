@@ -485,18 +485,21 @@ New features: Block private channel opening requests on-the-fly. Running `monito
     is_private: no
     
 📣 local update for peer <alias> <pubkey> 
-base_fee_mtokens: x -> y
-fee_rate: x -> y
-is_disabled: x -> y
-max_htlc_mtokens: x -> y
-updated_at: <time1> -> <time2>
+    base_fee_mtokens: x -> y
+    fee_rate: x -> y
+    is_disabled: x -> y
+    max_htlc_mtokens: x -> y
+    updated_at: <time1> -> <time2>
 
 📣 remote update for peer <alias> <pubkey>
-base_fee_mtokens: x -> y
-fee_rate: x -> y
-is_disabled: x -> y
-max_htlc_mtokens: x -> y
-updated_at: <time1> -> <time2>
+    base_fee_mtokens: x -> y
+    fee_rate: x -> y
+    is_disabled: x -> y
+    max_htlc_mtokens: x -> y
+    updated_at: <time1> -> <time2>
+
+📩 message received from <alias>
+<peer message>
 ````
 
 ___________________________________________________________
