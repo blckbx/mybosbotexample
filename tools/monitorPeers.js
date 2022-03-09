@@ -373,7 +373,10 @@ const run = async () => {
   peerMessages.on('message_received', async f => {
     const messages = [`📩 message received from ${publicKeyToAlias[f.public_key]}`]
     messages.push(Buffer.from(f.message, 'hex').toString('utf8'))
-    log(messages.join('\n'))
+    const result = messages.join('\n')
+    
+    log(result)
+    await telegramLog(result)
   })
   peerMessages.on('error', () => {
     log(`peerMsgEvents error`)
