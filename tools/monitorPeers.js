@@ -312,7 +312,7 @@ const run = async () => {
   chanOpenEvents.on('channel_request', async f => {
     try {
 
-      // ALLOW_PRIVATE_CHANNEL = false : we don't want private channels
+      // ALLOW_PRIVATE_CHANNELS = false : we don't want private channels
       if(!ALLOW_PRIVATE_CHANNELS) {
         // reject all private channels
         if(f.is_private) {
@@ -345,7 +345,7 @@ const run = async () => {
               return f.accept()
         }
 
-      // ALLOW_PRIVATE_CHANNEL = true : we do allow private channels
+      // ALLOW_PRIVATE_CHANNELS = true : we do allow private channels
       } else {
 
           const message = `🌱 channel opening accepted:
