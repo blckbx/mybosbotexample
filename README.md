@@ -403,7 +403,7 @@ x are < 6 blocks away from timing out (~60 minutes)
 
 ### **🧾 getCapacityFees:** ###
 
-Capacity-weighted median fee rates for your node and your peers. 
+Capacity-weighted median fee rates towards a node (incoming fee distribution) for your node and your peers. 
 
 ````
 $ node getCapacityFees 
