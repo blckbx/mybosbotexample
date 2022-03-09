@@ -1,6 +1,6 @@
 // logs peer disconnects/connects and graph policy updates (fee rates n stuff) in our channels
 // also logs forwarding successes and failures w/ reason if provided
-// and block updates and channel opening/closings
+// and blockchain updates and manage channel opening/closings requests
 // optionally send events to Telegram Bot
 
 import fs from 'fs'
@@ -9,17 +9,20 @@ import dotenv from 'dotenv';
 import bos from '../bos.js'
 const { lnService } = bos
 
-// --- settings ---
-
-const LOG_FILE_PATH = 'events.log'
-const SETTINGS_PATH = 'settings.json'
 // Tor Proxy for Telegram Bot
 const env = process.env
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+// global info (TG settings)
+const mynode = {}
+
+// --- settings ---
+
+const LOG_FILE_PATH = 'events.log'
+const SETTINGS_PATH = 'settings.json'
+
 const TELEGRAM_PROXY_HOST = env.TELEGRAM_PROXY_HOST || ''
 const TELEGRAM_PROXY_PORT = env.TELEGRAM_PROXY_PORT || ''
-const mynode = {}
 
 // this filters what htlc fail events will be shown
 const WHEN_LOG_FAILED_HTLCS = forward =>
@@ -28,12 +31,14 @@ const WHEN_LOG_FAILED_HTLCS = forward =>
   // no probes
   forward.internal_failure !== 'UNKNOWN_INVOICE'
 
-// shows forwards that confirm
+
+// Manual Settings
+// shows only forwards that confirm
 const LOG_SUCCESSFUL_FORWARDS = true
-
-// allow or deny incomingprivate channel requests
+// allow or deny incoming private channel requests
 const ALLOW_PRIVATE_CHANNELS = false
-
+// set minchansize
+const MIN_CHAN_SIZE = parseInt(env.MINCHANSIZE) || 0
 // sometimes just timestamp is updated, this ignores those gossip updates
 const IGNORE_GOSSIP_UPDATES_WITHOUT_SETTING_CHANGES = true
 
@@ -55,7 +60,7 @@ const run = async () => {
   const chanEvents = await lnService.subscribeToChannels({ lnd })
   const chanOpenEvents = await lnService.subscribeToOpenRequests({ lnd })
 
-  // init telegram settings
+  // init settings
   if (fs.existsSync(SETTINGS_PATH)) {
     mynode.settings = JSON.parse(fs.readFileSync(SETTINGS_PATH))
   }
@@ -65,6 +70,12 @@ const run = async () => {
     log(`bos.sayWithTelegramBot(): Connecting via proxy: socks://${TELEGRAM_PROXY_HOST}:${TELEGRAM_PROXY_PORT}`)
   } else {
     log(`bos.sayWithTelegramBot(): Connecting without proxy`)
+  }
+  // MIN_CHAN_SIZE setting (from .env file or fallback to default (lnd.conf or minimum))
+  if(MIN_CHAN_SIZE !== 0) {
+    log(`MIN_CHAN_SIZE = ${MIN_CHAN_SIZE}`)
+  } else {
+    log(`MIN_CHAN_SIZE is not explicitly set, falling back to default`)
   }
 
 
@@ -111,9 +122,9 @@ const run = async () => {
       '\n   ',
       updates.join('\n    ')
     )
-    
-    await telegramLog(`📣 ${whoUpdated} update for peer ${publicKeyToAlias[remote_key]} ${remote_key} ${offlineStatus}\n${updates.join('\n')}`)  
 
+    // await telegramLog(`📣 ${whoUpdated} update for peer ${publicKeyToAlias[remote_key]} ${remote_key} ${offlineStatus}\n${updates.join('\n')}`)
+    
     // update policy data
     lastPolicies = await bos.getNodeChannels()
   })
@@ -305,40 +316,103 @@ const run = async () => {
 
   // channelOpenRequests
   // https://github.com/alexbosworth/ln-service#subscribetoopenrequests 
-  // ability to reject private channels
+  // ability to reject private channels and channels below MIN_CHAN_SIZE
   chanOpenEvents.on('channel_request', async f => {
     try {
-      let result
-      if(!ALLOW_PRIVATE_CHANNELS) {
-        result = f.is_private ? f.reject() : f.allowed()
 
+      // ALLOW_PRIVATE_CHANNEL = false : we don't want private channels
+      if(!ALLOW_PRIVATE_CHANNELS) {
+        // reject all private channels
         if(f.is_private) {
           const message = `🚫 private channel rejected:
       alias: ${(await bos.getNodeFromGraph({ public_key: f.partner_public_key }))?.alias ?? 'unknown'}
       remote_pubkey: ${f.partner_public_key}
       channel_id: ${f.id}
       capacity: ${pretty(f.capacity, 0)} sats`
+
           log(message)
           await telegramLog(message)
-        }
-      } else {
-        result = f.accept()
 
-        const message = `🌱 channel opening accepted:
+          return f.reject()
+
+        // public channel requested
+        } else {
+
+          //decide on MIN_CHAN_SIZE: accept if above, reject if below
+          if(f.capacity > MIN_CHAN_SIZE) {
+            const message = `🌱 channel opening accepted:
       alias: ${(await bos.getNodeFromGraph({ public_key: f.partner_public_key }))?.alias ?? 'unknown'}
       remote_pubkey: ${f.partner_public_key}
       channel_id: ${f.id}
-      capacity: ${pretty(f.capacity, 0)} sats`
-        log(message)
-        await telegramLog(message)
+      capacity: ${pretty(f.capacity, 0)} sats (MinChanSize: ${MIN_CHAN_SIZE})`
+              log(message)
+              await telegramLog(message)
+
+              return f.accept()
+
+          // reject public channel request w/ capacity <= MIN_CHAN_SIZE
+          } else {
+        
+            const message = `🚫 public channel rejected (reason: MIN_CHAN_SIZE):
+      alias: ${(await bos.getNodeFromGraph({ public_key: f.partner_public_key }))?.alias ?? 'unknown'}
+      remote_pubkey: ${f.partner_public_key}
+      channel_id: ${f.id}
+      capacity: ${pretty(f.capacity, 0)} sats (MinChanSize: ${MIN_CHAN_SIZE})`
+              
+            log(message)
+            await telegramLog(message)
+
+            return f.reject()
+          }
+        }
+
+      // ALLOW_PRIVATE_CHANNEL = true : we do allow private channels
+      } else {
+
+        //decide on MIN_CHAN_SIZE: accept if above, reject if below
+        if(f.capacity > MIN_CHAN_SIZE) {
+
+          const message = `🌱 channel opening accepted:
+      alias: ${(await bos.getNodeFromGraph({ public_key: f.partner_public_key }))?.alias ?? 'unknown'}
+      remote_pubkey: ${f.partner_public_key}
+      channel_id: ${f.id}
+      capacity: ${pretty(f.capacity, 0)} sats (MinChanSize: ${MIN_CHAN_SIZE})`
+
+          log(message)
+          await telegramLog(message)
+
+          return f.accept()
+
+          // reject public channel request w/ capacity <= MIN_CHAN_SIZE
+        } else {
+        
+          const message = `🚫 public channel rejected (reason: MIN_CHAN_SIZE):
+      alias: ${(await bos.getNodeFromGraph({ public_key: f.partner_public_key }))?.alias ?? 'unknown'}
+      remote_pubkey: ${f.partner_public_key}
+      channel_id: ${f.id}
+      capacity: ${pretty(f.capacity, 0)} sats (MinChanSize: ${pretty(MIN_CHAN_SIZE)})`
+              
+          log(message)
+          await telegramLog(message)
+
+          return f.reject()
+        }
       }
-      return result
     } catch(e) {
       log(`chanOpenEvents error`)
     }
   })
 
-
+  /*
+  peerMsgEvents.on('message_received', async f => {
+    const messages = [`📩 message received from ${publicKeyToAlias[f.public_key]}`]
+    messages.push(f.message)
+    log(messages.join('\n'))
+  })
+  peerMsgEvents.on('error', () => {
+    log(`peerMsgEvents error`)
+  })
+  */
   log('listening for events...')
 }
 
