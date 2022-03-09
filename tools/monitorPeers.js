@@ -36,7 +36,7 @@ const WHEN_LOG_FAILED_HTLCS = forward =>
 // shows only forwards that confirm
 const LOG_SUCCESSFUL_FORWARDS = true
 // allow or deny incoming private channel requests
-const ALLOW_PRIVATE_CHANNELS = false
+const ALLOW_PRIVATE_CHANNELS = true
 // set minchansize
 const MIN_CHAN_SIZE = parseInt(env.MINCHANSIZE) || 0
 // sometimes just timestamp is updated, this ignores those gossip updates
