@@ -468,7 +468,7 @@ New features: Block private channel opening requests on-the-fly. Running `monito
     capacity: xxx sats 
     funding_tx: 11111111111111111111111111111111111111:1
     is_private: no
-    initiator: remote
+    initiator: local | remote
     
 🥀 channel coop-closed:
     alias: xxx
