@@ -65,9 +65,9 @@ const run = async () => {
   if(TELEGRAM_PROXY_HOST != '' && TELEGRAM_PROXY_PORT != '' &&
       mynode.settings?.telegram.chat_id && mynode.settings?.telegram.token)
   {
-    log(`bos.sayWithTelegramBot(): Connecting via proxy: socks://${TELEGRAM_PROXY_HOST}:${TELEGRAM_PROXY_PORT}`)
+    log(`telegramLog(): Connecting via proxy: socks://${TELEGRAM_PROXY_HOST}:${TELEGRAM_PROXY_PORT}`)
   } else {
-    log(`bos.sayWithTelegramBot(): Connecting without proxy`)
+    log(`telegramLog(): Connecting without proxy`)
   }
 
 
