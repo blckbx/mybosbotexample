@@ -37,8 +37,6 @@ const WHEN_LOG_FAILED_HTLCS = forward =>
 const LOG_SUCCESSFUL_FORWARDS = true
 // allow or deny incoming private channel requests
 const ALLOW_PRIVATE_CHANNELS = true
-// set minchansize
-const MIN_CHAN_SIZE = parseInt(env.MINCHANSIZE) || 0
 // sometimes just timestamp is updated, this ignores those gossip updates
 const IGNORE_GOSSIP_UPDATES_WITHOUT_SETTING_CHANGES = true
 
@@ -70,12 +68,6 @@ const run = async () => {
     log(`bos.sayWithTelegramBot(): Connecting via proxy: socks://${TELEGRAM_PROXY_HOST}:${TELEGRAM_PROXY_PORT}`)
   } else {
     log(`bos.sayWithTelegramBot(): Connecting without proxy`)
-  }
-  // MIN_CHAN_SIZE setting (from .env file or fallback to default (lnd.conf or minimum))
-  if(MIN_CHAN_SIZE !== 0) {
-    log(`MIN_CHAN_SIZE = ${MIN_CHAN_SIZE}`)
-  } else {
-    log(`MIN_CHAN_SIZE is not explicitly set, falling back to default`)
   }
 
 
@@ -329,6 +321,7 @@ const run = async () => {
       alias: ${(await bos.getNodeFromGraph({ public_key: f.partner_public_key }))?.alias ?? 'unknown'}
       remote_pubkey: ${f.partner_public_key}
       channel_id: ${f.id}
+      channel type: private
       capacity: ${pretty(f.capacity, 0)} sats`
 
           log(message)
@@ -339,67 +332,34 @@ const run = async () => {
         // public channel requested
         } else {
 
-          //decide on MIN_CHAN_SIZE: accept if above, reject if below
-          if(f.capacity > MIN_CHAN_SIZE || MIN_CHAN_SIZE === 0) {
-
             const message = `🌱 channel opening accepted:
       alias: ${(await bos.getNodeFromGraph({ public_key: f.partner_public_key }))?.alias ?? 'unknown'}
       remote_pubkey: ${f.partner_public_key}
       channel_id: ${f.id}
-      capacity: ${pretty(f.capacity, 0)} sats ` + (MIN_CHAN_SIZE === 0) ? `(default MinChanSize)` : `(MinChanSize: ${pretty(MIN_CHAN_SIZE)})`
+      channel type: public
+      capacity: ${pretty(f.capacity, 0)} sats`
 
               log(message)
               await telegramLog(message)
 
               return f.accept()
-
-          // reject public channel request w/ capacity <= MIN_CHAN_SIZE
-          } else {
-        
-            const message = `🚫 public channel rejected (reason: MinChanSize):
-      alias: ${(await bos.getNodeFromGraph({ public_key: f.partner_public_key }))?.alias ?? 'unknown'}
-      remote_pubkey: ${f.partner_public_key}
-      channel_id: ${f.id}
-      capacity: ${pretty(f.capacity, 0)} sats (MinChanSize: ${pretty(MIN_CHAN_SIZE)})`
-              
-            log(message)
-            await telegramLog(message)
-
-            return f.reject()
-          }
         }
 
       // ALLOW_PRIVATE_CHANNEL = true : we do allow private channels
       } else {
 
-        //decide on MIN_CHAN_SIZE: accept if above, reject if below
-        if(f.capacity > MIN_CHAN_SIZE || MIN_CHAN_SIZE === 0) {
-
           const message = `🌱 channel opening accepted:
     alias: ${(await bos.getNodeFromGraph({ public_key: f.partner_public_key }))?.alias ?? 'unknown'}
     remote_pubkey: ${f.partner_public_key}
     channel_id: ${f.id}
-    capacity: ${pretty(f.capacity, 0)} sats ` + (MIN_CHAN_SIZE === 0) ? `(default MinChanSize)` : `(MinChanSize: ${pretty(MIN_CHAN_SIZE)})`
+    channel type: ${f.is_private ? 'private' : 'public'}
+    capacity: ${pretty(f.capacity, 0)} sats`
 
           log(message)
           await telegramLog(message)
 
           return f.accept()
 
-          // reject public channel request w/ capacity <= MIN_CHAN_SIZE
-        } else {
-        
-          const message = `🚫 public channel rejected (reason: MinChanSize):
-      alias: ${(await bos.getNodeFromGraph({ public_key: f.partner_public_key }))?.alias ?? 'unknown'}
-      remote_pubkey: ${f.partner_public_key}
-      channel_id: ${f.id}
-      capacity: ${pretty(f.capacity, 0)} sats (MinChanSize: ${pretty(MIN_CHAN_SIZE)})`
-              
-          log(message)
-          await telegramLog(message)
-
-          return f.reject()
-        }
       }
     } catch(e) {
       log(`chanOpenEvents error`)
