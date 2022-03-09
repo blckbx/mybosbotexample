@@ -2,6 +2,7 @@
 // also logs forwarding successes and failures w/ reason if provided
 // and blockchain updates and manage channel opening requests
 // optionally send events to Telegram Bot
+// and receive peer messages
 
 import fs from 'fs'
 import path from 'path';
@@ -57,6 +58,7 @@ const run = async () => {
   const blockEvents = await lnService.subscribeToBlocks({ lnd })
   const chanEvents = await lnService.subscribeToChannels({ lnd })
   const chanOpenEvents = await lnService.subscribeToOpenRequests({ lnd })
+  const peerMessages = await lnService.subscribeToPeerMessages({ lnd })
 
   // init settings
   if (fs.existsSync(SETTINGS_PATH)) {
@@ -366,16 +368,19 @@ const run = async () => {
     }
   })
 
-  /*
-  peerMsgEvents.on('message_received', async f => {
+
+  
+  peerMessages.on('message_received', async f => {
     const messages = [`📩 message received from ${publicKeyToAlias[f.public_key]}`]
-    messages.push(f.message)
+    messages.push(Buffer.from(f.message, 'hex').toString('utf8'))
     log(messages.join('\n'))
   })
-  peerMsgEvents.on('error', () => {
+  peerMessages.on('error', () => {
     log(`peerMsgEvents error`)
   })
-  */
+  
+  
+  
   log('listening for events...')
 }
 
