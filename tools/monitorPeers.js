@@ -1,6 +1,6 @@
 // logs peer disconnects/connects and graph policy updates (fee rates n stuff) in our channels
 // also logs forwarding successes and failures w/ reason if provided
-// and blockchain updates and manage channel opening/closings requests
+// and blockchain updates and manage channel opening requests
 // optionally send events to Telegram Bot
 
 import fs from 'fs'
