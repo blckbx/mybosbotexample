@@ -371,7 +371,7 @@ const run = async () => {
 
   
   peerMessages.on('message_received', async f => {
-    const messages = [`📩 message received from ${publicKeyToAlias[f.public_key]}`]
+    const messages = [`📩 peer message received from ${publicKeyToAlias[f.public_key]}:`]
     messages.push(Buffer.from(f.message, 'hex').toString('utf8'))
     const result = messages.join('\n')
     
