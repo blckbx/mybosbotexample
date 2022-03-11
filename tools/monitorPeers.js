@@ -1,6 +1,6 @@
 // logs peer disconnects/connects and graph policy updates (fee rates n stuff) in our channels
 // also logs forwarding successes and failures w/ reason if provided
-// and blockchain updates and manage channel opening requests
+// and blockchain updates and manage channel opening/closings & requests
 // optionally send events to Telegram Bot
 // and receive peer messages
 
@@ -37,7 +37,8 @@ const WHEN_LOG_FAILED_HTLCS = forward =>
 // shows only forwards that confirm
 const LOG_SUCCESSFUL_FORWARDS = true
 // allow or deny incoming private channel requests
-const ALLOW_PRIVATE_CHANNELS = true
+const ALLOW_PRIVATE_CHANNELS = env.ALLOW_PRIVATE_CHANNELS === 'false'? false : true
+const REJECT_ALL_REQUESTS = env.REJECT_ALL_REQUESTS === 'true' ? true : false
 // sometimes just timestamp is updated, this ignores those gossip updates
 const IGNORE_GOSSIP_UPDATES_WITHOUT_SETTING_CHANGES = true
 
@@ -310,15 +311,18 @@ const run = async () => {
 
   // channelOpenRequests
   // https://github.com/alexbosworth/ln-service#subscribetoopenrequests 
-  // ability to reject private channels
+  // ability to reject private/all channels
   chanOpenEvents.on('channel_request', async f => {
     try {
+
+      // REJECT ALL switch
+      if(REJECT_ALL_REQUESTS) return f.reject()
 
       // ALLOW_PRIVATE_CHANNELS = false : we don't want private channels
       if(!ALLOW_PRIVATE_CHANNELS) {
         // reject all private channels
         if(f.is_private) {
-
+          
           const message = `🚫 private channel rejected:
       alias: ${(await bos.getNodeFromGraph({ public_key: f.partner_public_key }))?.alias ?? 'unknown'}
       remote_pubkey: ${f.partner_public_key}
@@ -334,34 +338,33 @@ const run = async () => {
         // public channel requested
         } else {
 
-            const message = `🌱 channel opening accepted:
+          const message = `🌱 channel opening accepted:
       alias: ${(await bos.getNodeFromGraph({ public_key: f.partner_public_key }))?.alias ?? 'unknown'}
       remote_pubkey: ${f.partner_public_key}
       channel_id: ${f.id}
       channel type: public
       capacity: ${pretty(f.capacity, 0)} sats`
 
-              log(message)
-              await telegramLog(message)
+          log(message)
+          await telegramLog(message)
 
-              return f.accept()
+          return f.accept()
         }
 
       // ALLOW_PRIVATE_CHANNELS = true : we do allow private channels
       } else {
 
-          const message = `🌱 channel opening accepted:
-    alias: ${(await bos.getNodeFromGraph({ public_key: f.partner_public_key }))?.alias ?? 'unknown'}
-    remote_pubkey: ${f.partner_public_key}
-    channel_id: ${f.id}
-    channel type: ${f.is_private ? 'private' : 'public'}
-    capacity: ${pretty(f.capacity, 0)} sats`
+        const message = `🌱 channel opening accepted:
+      alias: ${(await bos.getNodeFromGraph({ public_key: f.partner_public_key }))?.alias ?? 'unknown'}
+      remote_pubkey: ${f.partner_public_key}
+      channel_id: ${f.id}
+      channel type: ${f.is_private ? 'private' : 'public'}
+      capacity: ${pretty(f.capacity, 0)} sats`
 
-          log(message)
-          await telegramLog(message)
+        log(message)
+        await telegramLog(message)
 
-          return f.accept()
-
+        return f.accept()
       }
     } catch(e) {
       log(`chanOpenEvents error`)
