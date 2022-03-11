@@ -310,7 +310,7 @@ const run = async () => {
 
   // channelOpenRequests
   // https://github.com/alexbosworth/ln-service#subscribetoopenrequests 
-  // ability to reject private channels and channels below MIN_CHAN_SIZE
+  // ability to reject private channels
   chanOpenEvents.on('channel_request', async f => {
     try {
 
