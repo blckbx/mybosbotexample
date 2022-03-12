@@ -259,7 +259,7 @@ const run = async () => {
     const message = `🌱 channel opened: 
     remote_pubkey: ${f.partner_public_key}
     channel_id: ${f.id}
-    capacity: ${pretty(f.capacity, 3)} sats 
+    capacity: ${pretty(f.capacity, 0)} sats 
     funding_tx: ${f.transaction_id}:${f.transaction_vout}
     is_private: ${is_private}
     initiator: ${initiator}`
