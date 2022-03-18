@@ -339,7 +339,7 @@ const run = async () => {
       alias: ${(await bos.getNodeFromGraph({ public_key: f.partner_public_key }))?.alias ?? 'unknown'}
       remote_pubkey: ${f.partner_public_key}
       channel_id: ${f.id}
-      channel type: private
+      channel type: ${f.is_private ? 'private' : 'public'}
       capacity: ${pretty(f.capacity, 0)} sats`
 
           log(message)
