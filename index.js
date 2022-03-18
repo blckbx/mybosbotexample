@@ -410,7 +410,7 @@ const runSimpleReconnect = async () => {
   for (const public_key of finalOffline) {
     const alias = ca(pkToAlias[public_key]) || public_key.slice(0, 20)
     const { countPeers, countDisabled } = await getPeersDisabledTowards({ public_key })
-    const percent = countPeers ? ((countDisabled / countPeers) * 100).toFixed(0) + '% IN-disabled' : ''
+    const percent = countPeers ? ((countDisabled / countPeers) * 100).toFixed(0) + '% 🚫' : ''
     const daysOffline = lastSeen[public_key] ? daysAgo(lastSeen[public_key]).toFixed(1) + 'd offline' : ''
     // const isReallyOffline = daysOffline > 1 || (countPeers && countDisabled / countPeers > 0.33)
     // const icon = isReallyOffline ? '❌' : '⛔'
@@ -423,7 +423,7 @@ const runSimpleReconnect = async () => {
     ? `🔌 Simple Reconnect Statistics:\n` 
     + ` ${finalOffline.length} / ${peersTotal} peers offline (${((finalOffline.length / peersTotal) * 100).toFixed(0)}%):\n -` 
     + ` ${offlinePeerInfoList.join('\n - ') || 'n/a'}\n`
-    + ` ${peersDisabledToMe.length} peers IN-disabled (${((peersDisabledToMe.length / peersTotal) * 100).toFixed(0)}%):\n -` 
+    + ` ${peersDisabledToMe.length} peers in-disabled (${((peersDisabledToMe.length / peersTotal) * 100).toFixed(0)}%):\n -` 
     + ` ${peersDisabledToMe.map(pk => ca(pkToAlias[pk]) || pk.slice(0, 20)).join('\n - ') || 'n/a'}\n`
     + ` ${finalReconnected.length} peers reconnected: \n -` 
     + ` ${finalReconnected.map(pk => ca(pkToAlias[pk]) || pk.slice(0, 20)).join('\n - ') || 'n/a'}\n`    
@@ -2614,14 +2614,14 @@ const runBotReconnect = async () => {
     // const isReallyOffline = daysOffline > 1 || (countPeers && countDisabled / countPeers > 0.33)
     // const icon = isReallyOffline ? '❌' : '⛔'
     // offlinePeerInfoList.push(`${alias} ${icon} : ${percent}% IN-disabled | ${daysOffline}`)
-    offlinePeerInfoList.push(`${alias} : ${percent}% IN-disabled | ${daysOffline}`)
+    offlinePeerInfoList.push(`${alias} : ${percent}% 🚫 | ${daysOffline}`)
   }
   
   const message = !majorError
     ? `🔌 Offline Statistics (BoS Reconnect):\n` 
       + ` ${offline.length} / ${peersTotal} peers offline (${((offline.length / peersTotal) * 100).toFixed(0)}%):\n -` 
       + ` ${offlinePeerInfoList.join('\n - ') || 'n/a'}\n` 
-      + ` ${peersDisabledToMe.length} peers IN-disabled (${((peersDisabledToMe.length / peersTotal) * 100).toFixed(0)}%):\n -`
+      + ` ${peersDisabledToMe.length} peers in-disabled (${((peersDisabledToMe.length / peersTotal) * 100).toFixed(0)}%):\n -`
       + ` ${peersDisabledToMe.map(p => p.alias).join('\n - ') || 'n/a'}\n` 
       + ` ${reconnected.length} peers reconnected:\n -` 
       + ` ${reconnected.map(p => p.alias).join('\n - ') || 'n/a'}\n`      
