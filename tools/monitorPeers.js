@@ -316,7 +316,19 @@ const run = async () => {
     try {
 
       // REJECT ALL switch
-      if(REJECT_ALL_REQUESTS) return f.reject()
+      if (REJECT_ALL_REQUESTS) {
+        const message = `🚫 channel rejected:
+      alias: ${(await bos.getNodeFromGraph({ public_key: f.partner_public_key }))?.alias ?? 'unknown'}
+      remote_pubkey: ${f.partner_public_key}
+      channel_id: ${f.id}
+      channel type: private
+      capacity: ${pretty(f.capacity, 0)} sats`
+  
+        log(message)
+        await telegramLog(message)        
+        
+        return f.reject()
+      }
 
       // ALLOW_PRIVATE_CHANNELS = false : we don't want private channels
       if(!ALLOW_PRIVATE_CHANNELS) {
