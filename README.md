@@ -197,14 +197,14 @@ generatePeersSnapshots()
 
 ## **🔌 BoS Reconnect / Simple Reconnect:**
 
-Checks frequently (`MINUTES_BETWEEN_BOS_RECONNECTS` / `MINUTES_BETWEEN_SIMPLE_RECONNECTS`) for offline / inactive peers and tries to reconnect them with `bos reconnect` (6h+ interval recommended) or `simple reconnect`(for the quick reconnect of inactive peers and/or disabled channels). Additionally a Telegram message containing stats of successful and/or unsuccessful reconnects is being sent:
+Checks frequently (`MINUTES_BETWEEN_BOS_RECONNECTS` / `MINUTES_BETWEEN_SIMPLE_RECONNECTS`) for offline / inactive peers and tries to reconnect them with `bos reconnect` (6h+ interval recommended) or `simple reconnect` for quick check and reconnect of inactive peers and/or in-disabled (🚫) channels. Additionally a Telegram message containing stats of successful and/or unsuccessful reconnects is being sent:
 ````
 🔌 Offline Statistics (BoS Reconnect):
 3 / 10 peers offline (30%):
-- Node1 : 45% IN-disabled | 0.5d offline
-- Node2 : 75% IN-disabled | 0.0d offline
-- Node3 : 30% IN-disabled | 1.5d offline
-2 / 10 (20%) IN-disabled (20%):
+- Node1 : 45% 🚫 | 0.5d offline
+- Node2 : 75% 🚫 | 0.0d offline
+- Node3 : 30% 🚫 | 1.5d offline
+2 / 10 (20%) in-disabled (20%):
 - Node4
 - Node5
 1 peers reconnected: 
@@ -215,11 +215,11 @@ Checks frequently (`MINUTES_BETWEEN_BOS_RECONNECTS` / `MINUTES_BETWEEN_SIMPLE_RE
 ````
 🔌 Simple Reconnect Statistics:
 2 / 10 peers offline (20%):
-- Node1 : 45% IN-disabled | 0.5d offline
-- Node2 : 75% IN-disabled | 0.0d offline
-0 / 10 IN-disabled (0%):
+- Node1 : 45% 🚫 | 0.5d offline
+- Node2 : 75% 🚫 | 0.0d offline
+0 / 10 in-disabled (0%):
 - n/a
-0 peers reconnected: 
+0 peers reconnected:
 - n/a
 (Simple Reconnect every x minutes).
 ````
