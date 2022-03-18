@@ -450,7 +450,7 @@ New features: Block private channel opening requests on-the-fly. Running `monito
     channel_id: yyyyxyyyyxy
     capacity: xxx sats
     
-🚫 private channel rejected:
+🚫 [private] channel rejected:
     alias: xxx
     remote_pubkey: xxx
     channel_id: yyyyxyyyyxy
