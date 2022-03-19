@@ -1,0 +1,13 @@
+*~
+*.log
+*.txt
+backup
+logs
+peers
+snapshots
+node_modules
+.env.local
+timers.json
+settings.json
+_peers.json
+tools/test.js
