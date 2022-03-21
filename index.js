@@ -7,6 +7,13 @@ import bos from './bos.js' // my wrapper for bos, needs to be in same folder
 import path from 'path';
 import dotenv from 'dotenv';
 
+const { min, max, trunc, floor, abs, random, log2, pow, ceil, exp, PI } = Math // useful Math
+const copy = item => JSON.parse(JSON.stringify(item)) // copy values to new item, useful
+
+const env = process.env
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+
 // ## MANAGEMENT SWITCHES
 
 // allow BOS reconnect
