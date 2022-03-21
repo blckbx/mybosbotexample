@@ -70,7 +70,7 @@ const MINUTES_BETWEEN_SIMPLE_RECONNECTS = parseInt(env.MINUTES_BETWEEN_SIMPLE_RE
 // memory handling
 const SHOW_RAM_USAGE = env.SHOW_RAM_USAGE === 'true' ? true : false
 // more logs
-const VERBOSE = env.VERBOSE === 'true' ? true : false
+const VERBOSE = env.VERBOSE === 'false' ? false : true
 const DEBUG = env.DEBUG === 'true' ? true : false
 
 // ## REBALANCING SETTINGS
