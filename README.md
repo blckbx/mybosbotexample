@@ -2,12 +2,12 @@
 
 ## **Preconditions:**
 
-BosBot is designed to manage lightning nodes (rebalancing, fee adjustment, connectivity management). In this early state the script has set hardcoded parameters which will be changed in future releases to fit nodes in different shapes and sizes. For now Bosbot assumes that there are enough channels for rebalancing and channel sizes are above 2M satoshis. BosBot collects statistically valuable data to determine convenient parameters for its management routines.
+BosBot is designed to manage lightning nodes (rebalancing, fee adjustment, connectivity management). In this early state the script has set hardcoded parameters which will be changed in future releases to fit nodes of different shapes and sizes. For now Bosbot assumes that there are enough channels for rebalancing and channel sizes are above 2M satoshis. BosBot collects statistically valuable data to determine convenient parameters for its management routines.
 BosBot needs Balance of Satoshi (BoS: https://github.com/alexbosworth/balanceofsatoshis) globally installed.
 
 Tested configuration:
 - [LND-0.14.2-beta](https://github.com/lightningnetwork/lnd/releases/tag/v0.14.2-beta)
-- [BoS 11.59.0](https://github.com/alexbosworth/balanceofsatoshis#install) 
+- [BoS 11.61.0](https://github.com/alexbosworth/balanceofsatoshis#install) 
 - [npm 8.1.3](https://gist.github.com/alexbosworth/8fad3d51f9e1ff67995713edf2d20126)
 - [NodeJS 16.14.0](https://nodejs.org)
 
@@ -24,7 +24,7 @@ Tested configuration:
 - `ADJUST_POLICIES`: BosBot is permitted to adjust outgoing fees and max htlc sizes of your channels (**experimental!**)
 - `ADJUST_POLICIES_FEES` : if false this restricts policy management (setting htlc sizes/fees) to htlc size management only
 - `ALLOW_REBALANCING`: BosBot rebalances channels which are depleted to local or remote side (500_000 sats off balance with channel size above 2M)
-- `ALLOW_DB_CLEANUP`: BosBot backs up historical payments in json files and marks them for deletion in LND's channel database (compaction required to actually free up space) for better speed every `DAYS_BETWEEN_DB_CLEANING` days
+- `ALLOW_DB_CLEANUP`: BosBot backs up historical payments in json files and marks them for deletion in LND's channel database (compaction required to actually free up space) every `DAYS_BETWEEN_DB_CLEANING` days
 
 5) Adjust Important Settings:
 
@@ -42,7 +42,11 @@ Tested configuration:
 - `MINUTES_BETWEEN_BOS_RECONNECTS`: run `bos reconnect` every x minutes
 - `MINUTES_BETWEEN_SIMPLE_RECONNECTS`: run simple reconnect every x minutes
 
-6) Start Commands:
+6) Fine Tuning:
+- Optional Setup for Telegram Bot: Edit `settings.json` to your needs. Add HTTP API Token (set by BotFather) and chat id (lookup `/id` on Telegram). ⚠ **A word of caution: Connecting the node with a Telegram ID may expose your identity (registrered telephone number on Telegram)! It's adviced to use a proxy (e.g. Tor, see `.env` settings) to connect to a Telegram bot.**
+- Set rules for channels (see settings.json): `aliasMatch`, `min_ppm`, `max_ppm`, `no_local_rebalance`, `no_remote_balance`, `max_htlc_sats`, `AVOID_LIST` (nodes to exclude from rebalancing (also in-path))
+
+7) Start Commands:
 
 - `npm start` : starts [BosBot](#-workflow)
 - `npm run limiter` : starts [htlcLimiter](#-htlc-limiter--firewall) (logs to screen and file `limiter.log`)
@@ -50,7 +54,7 @@ Tested configuration:
 - `npm run visualize` : starts [visualizer](#-visualization)
 - `npm run nodesinpaths` : starts [nodesInPaths](#-nodes-in-paths)
 - `npm run isitdown <alias/pubkey>` : starts [isItDown](#-isitdown)
-- `npm run lookup <alias>` : starts [lookup](#-lookup) of a peer's collected data,
+- `npm run lookup <alias>` : starts [lookup](#-lookup) of a peer's collected data
 - `npm run isitsafetorestart` starts [isItSafeToRestart](#-isitsafetorestart)
 - `npm run getcapacityfees`: starts [getCapacityFees](#-getcapacityfees)
 - `npm run checkchans`: starts [checkChans](#-checkchans)
@@ -63,12 +67,6 @@ Tested configuration:
 4) `runSimpleReconnect()`
 5) `runBotRebalanceOrganizer()`
 6) `runBot()` // repeat every x minutes (`MINUTES_BETWEEN_STEPS`)
-
-
-## **⚙ Fine Tuning:**
-
-1) Optional Setup Telegram Bot: Edit `settings.json` to your needs. Add HTTP API Token (set by BotFather) and chat id (lookup `/id` on Telegram). ⚠ **A word of caution: Connecting the node with a Telegram ID can expose your identity (registrered telephone number on Telegram)! It's adviced to use a proxy (e.g. Tor, see `.env` settings) to connect to your Telegram bot.**
-2) Set rules for channels (see settings.json.example): `aliasMatch`, `min_ppm`, `max_ppm`, `no_local_rebalance`, `no_remote_balance`, `max_htlc_sats`, `AVOID_LIST` (nodes to exclude from rebalancing (even in-path))
 
 
 ## **🧬 Rebalancing:**
