@@ -262,12 +262,13 @@ const run = async () => {
     capacity: ${pretty(f.capacity, 0)} sats 
     funding_tx: ${f.transaction_id}:${f.transaction_vout}
     is_private: ${is_private}
-    initiator: ${initiator}`
+    channel initiator: ${initiator}`
     log(message)
     await telegramLog(message)
   })
 
   chanEvents.on('channel_closed', async f => {
+
     const is_private = f.is_private ? 'yes' : 'no'
     
     if (f.is_force_close) {
@@ -278,7 +279,7 @@ const run = async () => {
       alias: ${publicKeyToAlias[f.partner_public_key]}
       remote_pubkey: ${f.partner_public_key}
       channel_id: ${f.id}
-      force_close_initiator: ${force_initiator}      
+      force close origin: ${force_initiator}      
       capacity: ${pretty(f.capacity, 0)} sats
       local: ${pretty(f.final_local_balance, 0)} sats | ${pretty((f.capacity - f.final_local_balance), 0)} sats :remote
       funding_tx: ${f.transaction_id}:${f.transaction_vout}
@@ -294,7 +295,7 @@ const run = async () => {
       alias: ${publicKeyToAlias[f.partner_public_key]}
       remote_pubkey: ${f.partner_public_key}
       channel_id: ${f.id}
-      coop_initiator: ${coop_initiator}
+      coop close origin: ${coop_initiator}
       capacity: ${pretty(f.capacity, 0)} sats
       local: ${pretty(f.final_local_balance, 0)} sats | ${pretty((f.capacity - f.final_local_balance), 0)} sats :remote
       funding_tx: ${f.transaction_id}:${f.transaction_vout}
