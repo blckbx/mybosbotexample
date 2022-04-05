@@ -1,8 +1,4 @@
 {
-  "telegram": {          
-    "token": "1234567890:AA1234567890RR_AA1234567890-YYYWQQQ",
-    "chat_id": "1234567890"
-  },
   "avoid": [
     "// 1ml",
     "0217890e3aad8d35bc054f43acc00084b25229ecff0ab68debd82883ad65ee8266",
