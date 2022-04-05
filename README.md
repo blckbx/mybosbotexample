@@ -3,7 +3,7 @@
 ## **Preconditions:**
 
 BosBot is designed to manage lightning nodes (rebalancing, fee adjustment, connectivity management). In this early state the script has set hardcoded parameters which will be changed in future releases to fit nodes of different shapes and sizes. For now Bosbot assumes that there are enough channels for rebalancing and channel sizes are above 2M satoshis. BosBot collects statistically valuable data to determine convenient parameters for its management routines.
-BosBot needs Balance of Satoshi (BoS: https://github.com/alexbosworth/balanceofsatoshis) globally installed.
+BosBot needs Balance of Satoshi (BoS: https://github.com/alexbosworth/balanceofsatoshis) globally [installed](https://gist.github.com/alexbosworth/8fad3d51f9e1ff67995713edf2d20126#setup-npm).
 
 Tested configuration:
 - [LND-0.14.2-beta](https://github.com/lightningnetwork/lnd/releases/tag/v0.14.2-beta)
