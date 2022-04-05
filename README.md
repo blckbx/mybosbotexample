@@ -37,14 +37,14 @@ Tested configuration:
 - `DAYS_FOR_FEE_REDUCTION`: min days of no routing before allowing fee reduction
 - `ROUTING_STOPPING_FEE_RATE`: ppm fees for drained channels
 - `MAX_PARALLEL_REBALANCES`: max count of parallel rebalances (high usage of resouces!)
+- `TELEGRAM_CHATID` & `TELEGRAM_TOKEN`: Add HTTP API Token (set by BotFather) and chat id (lookup `/id` on Telegram). ⚠ **A word of caution: Connecting the node with a Telegram ID may expose your identity (registrered telephone number on Telegram)! It's adviced to use a proxy (e.g. Tor, see `.env` settings) to connect to a Telegram bot.** 
 - `TELEGRAM_PROXY_HOST` & `TELEGRAM_PROXY_PORT`: add a (Tor) proxy to communicate with Telegram bot (recommended)
 - `DB_PATH`: adjust path to channel.db file
 - `MINUTES_BETWEEN_BOS_RECONNECTS`: run `bos reconnect` every x minutes
 - `MINUTES_BETWEEN_SIMPLE_RECONNECTS`: run simple reconnect every x minutes
 
 6) Fine Tuning:
-- Optional Setup for Telegram Bot: Edit `settings.json` to your needs. Add HTTP API Token (set by BotFather) and chat id (lookup `/id` on Telegram). ⚠ **A word of caution: Connecting the node with a Telegram ID may expose your identity (registrered telephone number on Telegram)! It's adviced to use a proxy (e.g. Tor, see `.env` settings) to connect to a Telegram bot.**
-- Set rules for channels (see settings.json): `aliasMatch`, `min_ppm`, `max_ppm`, `no_local_rebalance`, `no_remote_balance`, `max_htlc_sats`, `AVOID_LIST` (nodes to exclude from rebalancing (also in-path))
+- Set rules for channels and rebalances (see settings.json): `aliasMatch`, `min_ppm`, `max_ppm`, `no_local_rebalance`, `no_remote_balance`, `max_htlc_sats`, `AVOID_LIST` (nodes to exclude from rebalancing (also in-path))
 
 7) Start Commands:
 
