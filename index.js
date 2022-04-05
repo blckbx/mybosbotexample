@@ -326,8 +326,8 @@ const initialize = async () => {
 
   if(TELEGRAM_PROXY_HOST != '' 
     && TELEGRAM_PROXY_PORT != '' 
-    && mynode.settings?.telegram.chat_id 
-    && mynode.settings?.telegram.token)
+    && mynode.settings?.telegram?.chat_id 
+    && mynode.settings?.telegram?.token)
   {
     logDim(`bos.sayWithTelegramBot(): Connecting via proxy: socks://${TELEGRAM_PROXY_HOST}:${TELEGRAM_PROXY_PORT}`)
   } else {
