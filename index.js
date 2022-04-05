@@ -33,6 +33,9 @@ const ALLOW_DB_CLEANUP = env.ALLOW_DB_CLEANUP === 'true' ? true : false
 
 // ## GENERAL SETTINGS
 
+// Telegra Settings
+const TELEGRAM_CHATID = env.TELEGRAM_CHATID || ''
+const TELEGRAM_TOKEN = env.TELEGRAM_TOKEN || ''
 // Tor Proxy for Telegram Bot
 const TELEGRAM_PROXY_HOST = env.TELEGRAM_PROXY_HOST || ''
 const TELEGRAM_PROXY_PORT = env.TELEGRAM_PROXY_PORT || ''
@@ -336,8 +339,10 @@ const initialize = async () => {
 
   if(TELEGRAM_PROXY_HOST != '' 
     && TELEGRAM_PROXY_PORT != '' 
-    && mynode.settings?.telegram?.chat_id 
-    && mynode.settings?.telegram?.token)
+    && TELEGRAM_CHATID != ''
+    && TELEGRAM_TOKEN != '')
+    //&& mynode.settings?.telegram?.chat_id 
+    //&& mynode.settings?.telegram?.token)
   {
     logDim(`bos.sayWithTelegramBot(): Connecting via proxy: socks://${TELEGRAM_PROXY_HOST}:${TELEGRAM_PROXY_PORT}`)
   } else {
@@ -2519,7 +2524,9 @@ channel states size est: ${pretty(channelsDiskSize)} MB
 
 // uses telegram logging if available
 const telegramLog = async message => {
-  const { token, chat_id } = mynode.settings?.telegram || {}
+  // const { token, chat_id } = mynode.settings?.telegram || {}
+  const token = TELEGRAM_TOKEN
+  const chat_id = TELEGRAM_CHATID
   if(!token || !chat_id) return null
   
   let proxy = ''
