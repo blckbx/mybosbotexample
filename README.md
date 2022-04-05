@@ -61,12 +61,13 @@ Tested configuration:
 
 ## **♾ Workflow:**
 
-1) `runBotReconnectCheck()`
-2) `runUpdateFeesCheck()`
-3) `runCleaningCheck()`
-4) `runSimpleReconnect()`
-5) `runBotRebalanceOrganizer()`
-6) `runBot()` // repeat every x minutes (`MINUTES_BETWEEN_STEPS`)
+1) `runReloadSettings()`
+2) `runBotReconnectCheck()`
+3) `runUpdateFeesCheck()`
+4) `runCleaningCheck()`
+5) `runSimpleReconnect()`
+6) `runBotRebalanceOrganizer()`
+7) `runBot()` // repeat every x minutes (`MINUTES_BETWEEN_STEPS`)
 
 
 ## **🧬 Rebalancing:**
