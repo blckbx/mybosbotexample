@@ -6,6 +6,7 @@ import dns from 'dns' // comes with nodejs, to check if there's internet access
 import bos from './bos.js' // my wrapper for bos, needs to be in same folder
 import path from 'path';
 import dotenv from 'dotenv';
+import crypto from 'crypto'; // hash settings file
 
 const { min, max, trunc, floor, abs, random, log2, pow, ceil, exp, PI } = Math // useful Math
 const copy = item => JSON.parse(JSON.stringify(item)) // copy values to new item, useful
@@ -175,6 +176,7 @@ const PEERS_LOG_PATH = './peers'
 const LOG_FILES = './logs'
 const TIMERS_PATH = 'timers.json'
 const SETTINGS_PATH = 'settings.json'
+let SETTINGS_FILEHASH = ''
 const LAST_SEEN_PATH = `${LOG_FILES}/lastSeen.json`
 
 // Timers
@@ -204,6 +206,9 @@ const runBot = async () => {
   // force clean up memory if gc exposed with --expose-gc
   global?.gc?.()
   if (SHOW_RAM_USAGE) printMemoryUsage('(at start of runBot cycle)')
+
+  // reload settings
+  await runReloadSettings()
 
   // check if time for bos reconnect
   await runBotReconnectCheck()
@@ -313,6 +318,11 @@ const initialize = async () => {
 
   // load settings file
   if (fs.existsSync(SETTINGS_PATH)) {
+    const settingsFile = fs.readFileSync(SETTINGS_PATH)
+    const hashSum = crypto.createHash('sha256').update(settingsFile)
+    SETTINGS_FILEHASH = hashSum.digest('hex')
+    logDim(`initialize(): loading settings.json - hash: ${SETTINGS_FILEHASH}`)
+
     mynode.settings = JSON.parse(fs.readFileSync(SETTINGS_PATH))
 
     // add to avoid list from there
@@ -346,9 +356,38 @@ const initialize = async () => {
   // small pause for friendly stop
   await sleep(5 * seconds)
 
-
   // start bot loop
   runBot()
+}
+
+// update settings on the fly if necessary (compare file hashes)
+const runReloadSettings = async () => {
+  logDim('runReloadSettings()')
+  // check and reload settings
+  const settingsFile = fs.readFileSync(SETTINGS_PATH)
+  if (settingsFile) {
+    const hashSum = crypto.createHash('sha256').update(settingsFile)
+    const newHash = hashSum.digest('hex')
+    if(SETTINGS_FILEHASH !== newHash) {
+      // logDim(`runReloadSettings(): reloading settings.json\noldhash: ${SETTINGS_FILEHASH}\nnewhash: ${newHash}`)
+      logDim(`runReloadSettings(): reloading settings.json`)
+      mynode.settings = JSON.parse(fs.readFileSync(SETTINGS_PATH))
+      // empy and refill list
+      if (mynode.settings?.avoid?.length) {
+        AVOID_LIST.length = 0
+        mynode.settings.avoid.forEach(pk => {
+          if (!pk.startsWith('//')) AVOID_LIST.push(pk)
+        })
+        console.log(`${getDate()}`, { AVOID_LIST })
+      }
+    } else {
+      // logDim(`runReloadSettings(): settings.json unchanged\noldhash: ${SETTINGS_FILEHASH}\nnewhash: ${newHash}`)
+      logDim(`runReloadSettings(): settings.json unchanged`)
+    }
+  }
+
+  // small pause for friendly stop
+  await sleep(5 * seconds)
 }
 
 // my own reconnect method that doesn't disconnect channels based on just disables
@@ -576,7 +615,8 @@ const runBotRebalanceOrganizer = async () => {
   ? logDim('runBotRebalanceOrganizer()') 
   : logDim('runBotRebalanceOrganizer() - Dry-Running - No Rebalancing')
 
-  await sleep(5 * seconds)  
+  await sleep(5 * seconds)
+
   // match up peers
   // high weight lets channels get to pick good peers first (not always to occasionally search for better matches)
   
