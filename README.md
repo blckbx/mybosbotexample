@@ -6,16 +6,16 @@ BosBot is designed to manage lightning nodes (rebalancing, fee adjustment, conne
 BosBot needs Balance of Satoshi (BoS: https://github.com/alexbosworth/balanceofsatoshis) globally [installed](https://gist.github.com/alexbosworth/8fad3d51f9e1ff67995713edf2d20126#setup-npm).
 
 Tested configuration:
-- [LND-0.14.2-beta](https://github.com/lightningnetwork/lnd/releases/tag/v0.14.2-beta)
-- [BoS 11.61.0](https://github.com/alexbosworth/balanceofsatoshis#install) 
+- [LND-0.14.3-beta](https://github.com/lightningnetwork/lnd/releases/tag/v0.14.2-beta)
+- [BoS 11.64.x](https://github.com/alexbosworth/balanceofsatoshis#install) 
 - [npm 8.5.5](https://gist.github.com/alexbosworth/8fad3d51f9e1ff67995713edf2d20126)
-- [NodeJS 16.14.0](https://nodejs.org)
+- [NodeJS LTS](https://nodejs.org)
 
 
 ## **✏ Get Started / Usage / Management Switches:**
 
 1) Clone the repo: `git clone https://github.com/blckbx/bosbot.git`
-2) Create your own settings file: `cp .env .env.local` (prevents overwriting personal settings when updating via `git pull`)
+2) Create your own settings file: `cp .env .env.local` (prevents overwriting personal settings on update via `git pull`)
 3) Edit `nano .env.local` to your needs (see below).
 4) At the top of the file set which `MANAGEMENT SWITCHES` should be applied.
 
