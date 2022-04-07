@@ -22,6 +22,9 @@ const mynode = {}
 const LOG_FILE_PATH = 'events.log'
 const SETTINGS_PATH = 'settings.json'
 
+// Telegram Settings
+const TELEGRAM_CHATID = env.TELEGRAM_CHATID || ''
+const TELEGRAM_TOKEN = env.TELEGRAM_TOKEN || ''
 const TELEGRAM_PROXY_HOST = env.TELEGRAM_PROXY_HOST || ''
 const TELEGRAM_PROXY_PORT = env.TELEGRAM_PROXY_PORT || ''
 
@@ -65,8 +68,12 @@ const run = async () => {
   if (fs.existsSync(SETTINGS_PATH)) {
     mynode.settings = JSON.parse(fs.readFileSync(SETTINGS_PATH))
   }
-  if(TELEGRAM_PROXY_HOST != '' && TELEGRAM_PROXY_PORT != '' &&
-      mynode.settings?.telegram.chat_id && mynode.settings?.telegram.token)
+  if(TELEGRAM_PROXY_HOST != '' 
+    && TELEGRAM_PROXY_PORT != '' 
+    && TELEGRAM_CHATID != ''
+    && TELEGRAM_TOKEN != '')
+    //&& mynode.settings?.telegram?.chat_id 
+    //&& mynode.settings?.telegram?.token)    
   {
     log(`telegramLog(): Connecting via proxy: socks://${TELEGRAM_PROXY_HOST}:${TELEGRAM_PROXY_PORT}`)
   } else {
@@ -257,12 +264,12 @@ const run = async () => {
     const is_private = f.is_private ? 'yes' : 'no'
     const initiator = f.is_partner_initiated ? 'remote' : 'local'
     const message = `🌱 channel opened: 
-    remote_pubkey: ${f.partner_public_key}
-    channel_id: ${f.id}
-    capacity: ${pretty(f.capacity, 0)} sats 
-    funding_tx: ${f.transaction_id}:${f.transaction_vout}
-    is_private: ${is_private}
-    channel initiator: ${initiator}`
+  remote_pubkey: ${f.partner_public_key}
+  channel_id: ${f.id}
+  capacity: ${pretty(f.capacity, 0)} sats 
+  funding_tx: ${f.transaction_id}:${f.transaction_vout}
+  is_private: ${is_private}
+  channel initiator: ${initiator}`
     log(message)
     await telegramLog(message)
   })
@@ -276,14 +283,14 @@ const run = async () => {
       const force_initiator = (f.is_local_force_close ? 'local' : 'remote') || 'n/a'
 
       const message = `🥀 channel force-closed:
-      alias: ${publicKeyToAlias[f.partner_public_key]}
-      remote_pubkey: ${f.partner_public_key}
-      channel_id: ${f.id}
-      force close origin: ${force_initiator}      
-      capacity: ${pretty(f.capacity, 0)} sats
-      local: ${pretty(f.final_local_balance, 0)} sats | ${pretty((f.capacity - f.final_local_balance), 0)} sats :remote
-      funding_tx: ${f.transaction_id}:${f.transaction_vout}
-      is_private: ${is_private}`
+  alias: ${publicKeyToAlias[f.partner_public_key]}
+  remote_pubkey: ${f.partner_public_key}
+  channel_id: ${f.id}
+  force close origin: ${force_initiator}      
+  capacity: ${pretty(f.capacity, 0)} sats
+  local: ${pretty(f.final_local_balance, 0)} sats | ${pretty((f.capacity - f.final_local_balance), 0)} sats :remote
+  funding_tx: ${f.transaction_id}:${f.transaction_vout}
+  is_private: ${is_private}`
       log(message)
       await telegramLog(message)
 
@@ -292,14 +299,14 @@ const run = async () => {
       const coop_initiator = (f.is_partner_closed ? 'remote' : 'local') || 'n/a'
 
       const message = `🥀 channel coop-closed:
-      alias: ${publicKeyToAlias[f.partner_public_key]}
-      remote_pubkey: ${f.partner_public_key}
-      channel_id: ${f.id}
-      coop close origin: ${coop_initiator}
-      capacity: ${pretty(f.capacity, 0)} sats
-      local: ${pretty(f.final_local_balance, 0)} sats | ${pretty((f.capacity - f.final_local_balance), 0)} sats :remote
-      funding_tx: ${f.transaction_id}:${f.transaction_vout}
-      is_private: ${is_private}`
+  alias: ${publicKeyToAlias[f.partner_public_key]}
+  remote_pubkey: ${f.partner_public_key}
+  channel_id: ${f.id}
+  coop close origin: ${coop_initiator}
+  capacity: ${pretty(f.capacity, 0)} sats
+  local: ${pretty(f.final_local_balance, 0)} sats | ${pretty((f.capacity - f.final_local_balance), 0)} sats :remote
+  funding_tx: ${f.transaction_id}:${f.transaction_vout}
+  is_private: ${is_private}`
       log(message)
       await telegramLog(message)
     }
@@ -316,14 +323,14 @@ const run = async () => {
   chanOpenEvents.on('channel_request', async f => {
     try {
 
-      // REJECT ALL switch
+      // reject all switch
       if (REJECT_ALL_REQUESTS) {
         const message = `🚫 channel rejected:
-      alias: ${(await bos.getNodeFromGraph({ public_key: f.partner_public_key }))?.alias ?? 'unknown'}
-      remote_pubkey: ${f.partner_public_key}
-      channel_id: ${f.id}
-      channel type: private
-      capacity: ${pretty(f.capacity, 0)} sats`
+  alias: ${(await bos.getNodeFromGraph({ public_key: f.partner_public_key }))?.alias ?? 'unknown'}
+  remote_pubkey: ${f.partner_public_key}
+  channel_id: ${f.id}
+  channel type: ${f.is_private ? 'private' : 'public'}
+  capacity: ${pretty(f.capacity, 0)} sats`
   
         log(message)
         await telegramLog(message)        
@@ -337,11 +344,11 @@ const run = async () => {
         if(f.is_private) {
           
           const message = `🚫 private channel rejected:
-      alias: ${(await bos.getNodeFromGraph({ public_key: f.partner_public_key }))?.alias ?? 'unknown'}
-      remote_pubkey: ${f.partner_public_key}
-      channel_id: ${f.id}
-      channel type: ${f.is_private ? 'private' : 'public'}
-      capacity: ${pretty(f.capacity, 0)} sats`
+  alias: ${(await bos.getNodeFromGraph({ public_key: f.partner_public_key }))?.alias ?? 'unknown'}
+  remote_pubkey: ${f.partner_public_key}
+  channel_id: ${f.id}
+  channel type: private
+  capacity: ${pretty(f.capacity, 0)} sats`
 
           log(message)
           await telegramLog(message)
@@ -352,11 +359,11 @@ const run = async () => {
         } else {
 
           const message = `🌱 channel opening accepted:
-      alias: ${(await bos.getNodeFromGraph({ public_key: f.partner_public_key }))?.alias ?? 'unknown'}
-      remote_pubkey: ${f.partner_public_key}
-      channel_id: ${f.id}
-      channel type: public
-      capacity: ${pretty(f.capacity, 0)} sats`
+  alias: ${(await bos.getNodeFromGraph({ public_key: f.partner_public_key }))?.alias ?? 'unknown'}
+  remote_pubkey: ${f.partner_public_key}
+  channel_id: ${f.id}
+  channel type: public
+  capacity: ${pretty(f.capacity, 0)} sats`
 
           log(message)
           await telegramLog(message)
@@ -368,11 +375,11 @@ const run = async () => {
       } else {
 
         const message = `🌱 channel opening accepted:
-      alias: ${(await bos.getNodeFromGraph({ public_key: f.partner_public_key }))?.alias ?? 'unknown'}
-      remote_pubkey: ${f.partner_public_key}
-      channel_id: ${f.id}
-      channel type: ${f.is_private ? 'private' : 'public'}
-      capacity: ${pretty(f.capacity, 0)} sats`
+  alias: ${(await bos.getNodeFromGraph({ public_key: f.partner_public_key }))?.alias ?? 'unknown'}
+  remote_pubkey: ${f.partner_public_key}
+  channel_id: ${f.id}
+  channel type: ${f.is_private ? 'private' : 'public'}
+  capacity: ${pretty(f.capacity, 0)} sats`
 
         log(message)
         await telegramLog(message)
@@ -384,13 +391,13 @@ const run = async () => {
     }
   })
 
-
   
+
   peerMessages.on('message_received', async f => {
     const messages = [`📩 peer message received from ${publicKeyToAlias[f.public_key]}:`]
     messages.push(Buffer.from(f.message, 'hex').toString('utf8'))
     const result = messages.join('\n')
-    
+
     log(result)
     await telegramLog(result)
   })
@@ -398,18 +405,20 @@ const run = async () => {
     log(`peerMsgEvents error`)
   })
   
-  
-  
+
+
   log('listening for events...')
 }
 
 
 // uses telegram logging if available
 const telegramLog = async message => {
-  const { token, chat_id } = mynode.settings?.telegram || {}
+  // const { token, chat_id } = mynode.settings?.telegram || {}
+  const token = TELEGRAM_TOKEN
+  const chat_id = TELEGRAM_CHATID
   if(!token || !chat_id) return null
   
-  let proxy
+  let proxy = ''
   if(TELEGRAM_PROXY_HOST != '' && TELEGRAM_PROXY_PORT != '') { proxy = `socks://${TELEGRAM_PROXY_HOST}:${TELEGRAM_PROXY_PORT}` }
   if (token && chat_id) await bos.sayWithTelegramBot({ token, chat_id, message, proxy })
 }
