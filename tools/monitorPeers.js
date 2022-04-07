@@ -14,13 +14,9 @@ const { lnService } = bos
 const env = process.env
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
-// global info (TG settings)
-const mynode = {}
 
 // --- settings ---
-
 const LOG_FILE_PATH = 'events.log'
-const SETTINGS_PATH = 'settings.json'
 
 // Telegram Settings
 const TELEGRAM_CHATID = env.TELEGRAM_CHATID || ''
@@ -65,19 +61,14 @@ const run = async () => {
   const peerMessages = await lnService.subscribeToPeerMessages({ lnd })
 
   // init settings
-  if (fs.existsSync(SETTINGS_PATH)) {
-    mynode.settings = JSON.parse(fs.readFileSync(SETTINGS_PATH))
-  }
   if(TELEGRAM_PROXY_HOST != '' 
     && TELEGRAM_PROXY_PORT != '' 
     && TELEGRAM_CHATID != ''
     && TELEGRAM_TOKEN != '')
-    //&& mynode.settings?.telegram?.chat_id 
-    //&& mynode.settings?.telegram?.token)    
   {
-    log(`telegramLog(): Connecting via proxy: socks://${TELEGRAM_PROXY_HOST}:${TELEGRAM_PROXY_PORT}`)
+    log(`telegramLog(): Connecting with Telegram via proxy: socks://${TELEGRAM_PROXY_HOST}:${TELEGRAM_PROXY_PORT}`)
   } else {
-    log(`telegramLog(): Connecting without proxy`)
+    log(`telegramLog(): Connecting with Telegram without proxy`)
   }
 
 
@@ -410,17 +401,13 @@ const run = async () => {
   log('listening for events...')
 }
 
-
 // uses telegram logging if available
 const telegramLog = async message => {
-  // const { token, chat_id } = mynode.settings?.telegram || {}
-  const token = TELEGRAM_TOKEN
-  const chat_id = TELEGRAM_CHATID
-  if(!token || !chat_id) return null
+  if(!TELEGRAM_TOKEN || !TELEGRAM_CHATID) return null
   
   let proxy = ''
   if(TELEGRAM_PROXY_HOST != '' && TELEGRAM_PROXY_PORT != '') { proxy = `socks://${TELEGRAM_PROXY_HOST}:${TELEGRAM_PROXY_PORT}` }
-  if (token && chat_id) await bos.sayWithTelegramBot({ token, chat_id, message, proxy })
+  if (TELEGRAM_TOKEN && TELEGRAM_CHATID) await bos.sayWithTelegramBot({ TELEGRAM_TOKEN, TELEGRAM_CHATID, message, proxy })
 }
 
 
