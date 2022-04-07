@@ -33,7 +33,7 @@ const ALLOW_DB_CLEANUP = env.ALLOW_DB_CLEANUP === 'true' ? true : false
 
 // ## GENERAL SETTINGS
 
-// Telegra Settings
+// Telegram Settings
 const TELEGRAM_CHATID = env.TELEGRAM_CHATID || ''
 const TELEGRAM_TOKEN = env.TELEGRAM_TOKEN || ''
 // Tor Proxy for Telegram Bot
