@@ -505,7 +505,7 @@ New features: Block private channel opening requests on-the-fly. Running `monito
 
 ### **🖥 systemStats:** ###
 
-Fetches some system and hardware statistics in a short report which can be optionally send to TG bot. This heavily exposes sensitive system data to Telegram!! Furthermore to get all required data this command needs to be run as superuser (sudo). 
+Collects some system and hardware data and outputs a short report which can be optionally send to TG bot. Keep in mind: This heavily exposes sensitive system data to Telegram! Furthermore to get all required data, this command needs to be run as superuser (sudo). 
 ````
 uptime: xd xh xm xs
 cpu: 
