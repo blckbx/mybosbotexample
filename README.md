@@ -17,7 +17,8 @@ Tested configuration:
 1) Clone the repo: `git clone https://github.com/blckbx/bosbot.git`
 2) Create your own settings file: `cp .env .env.local` (prevents overwriting personal settings on update via `git pull` but mind changes made to `.env)
 3) Edit `nano .env.local` to your needs (see below).
-4) At the top of the file set which `MANAGEMENT SWITCHES` should be applied.
+4) `npm install`: installs additional packages, see `package.json`
+5) At the top of the file set which `MANAGEMENT SWITCHES` should be applied.
 
 - `ALLOW_BOS_RECONNECT`: BosBot checks for offline peers and tries to reconnect them within a given time period
 - `ALLOW_SIMPLE_RECONNECT`: BosBot checks for inactive peers and disabled channels and tries to reactivate them quickly via disconnecting and reconnecting
@@ -58,6 +59,7 @@ Tested configuration:
 - `npm run isitsafetorestart` starts [isItSafeToRestart](#-isitsafetorestart)
 - `npm run getcapacityfees`: starts [getCapacityFees](#-getcapacityfees)
 - `npm run checkchans`: starts [checkChans](#-checkchans)
+- `npm run systemstats`: fetches [system stats]() (optionally send to TG ⚠ Privacy! command requires `sudo` rights!)
 
 ## **♾ Workflow:**
 
@@ -499,6 +501,41 @@ New features: Block private channel opening requests on-the-fly. Running `monito
 
 📩 message received from <alias>
 <peer message>
+````
+
+### **🖥 systemStats:** ###
+
+Fetches some system and hardware statistics in a short report which can be optionally send to TG bot. This heavily exposes sensitive system data to Telegram!! Furthermore to get all required data this command needs to be run as superuser (sudo). 
+````
+uptime: xd xh xm xs
+cpu: 
+ load: x.xx (avg) | x.xx (sys)
+ temperature: xx °C
+
+services
+ tor        | status: true | cpu %: x.xx  | mem %: x.x
+ bitcoind   | status: true | cpu %: x.xx  | mem %: x.x
+ lnd        | status: true | cpu %: x.xx  | mem %: x.x
+ electrs    | status: true | cpu %: x.xx  | mem %: x.x
+
+memory: used: x.x GB / total: x.x GB
+swap:   used: x.x GB / total: x.x GB
+usb:    ups connected
+
+mounts
+ /dev/sda2  | x.x TB | x.x GB (x.x %) used
+ /dev/md0   | x.x TB | x.x GB (x.x %) used
+
+disks
+ <name> (<type>/<interface>) | x.x TB | xx °C | SMART Status: Ok
+ <name> (<type>/<interface>) | x.x TB | xx °C | SMART Status: Ok
+
+networks
+ lo         | type: virtual | state: unknown | speed: n/a
+ enp0s0     | type: wired   | state: up      | speed: xx
+
+networkStats
+ enp0s0 | state: up | rx: x.x GB | tx: x.x GB
 ````
 
 ___________________________________________________________
