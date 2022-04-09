@@ -14,10 +14,11 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 dotenv.config({ path: path.resolve(process.cwd(), '.env') })
 
 // --- settings ---
-const LOG_FILE_PATH = '../logs/sysdata.log'
+const getDay = () => new Date().toISOString().slice(0, 10)
+const LOG_FILE_PATH = `${path.resolve(process.cwd())}/logs/${getDay()}_sysdata.log`
 
 // Telegram Settings - 
-// Caution! You are sending sensible data to Telegram servers!
+// Caution! You are sending sensitive data to Telegram servers!
 const TELEGRAM_ACTIVE = false
 const TELEGRAM_CHATID = env.TELEGRAM_CHATID || ''
 const TELEGRAM_TOKEN = env.TELEGRAM_TOKEN || ''
@@ -29,15 +30,16 @@ const TELEGRAM_PROXY_PORT = env.TELEGRAM_PROXY_PORT || ''
 const run = async () => {
 
   // init settings
-  if(TELEGRAM_PROXY_HOST != '' 
-    && TELEGRAM_PROXY_PORT != '' 
-    && TELEGRAM_CHATID != ''
-    && TELEGRAM_TOKEN != ''
-    && TELEGRAM_ACTIVE)
-  {
-    log(`telegramLog(): Connecting with Telegram via proxy: socks://${TELEGRAM_PROXY_HOST}:${TELEGRAM_PROXY_PORT}`)
-  } else {
-    log(`telegramLog(): Connecting with Telegram without proxy`)
+  if(TELEGRAM_ACTIVE) {
+    if(TELEGRAM_PROXY_HOST != '' 
+      && TELEGRAM_PROXY_PORT != '' 
+      && TELEGRAM_CHATID != ''
+      && TELEGRAM_TOKEN != '')
+    {
+      log(`telegramLog(): Connecting with Telegram via proxy: socks://${TELEGRAM_PROXY_HOST}:${TELEGRAM_PROXY_PORT}`)
+    } else {
+      log(`telegramLog(): Connecting with Telegram without proxy`)
+    }
   }
 
   // stats
@@ -177,7 +179,7 @@ const log = (...args) =>
   setImmediate(() => {
     const msg = [getDate(), ...args, '\n'].join(' ')
     console.log(msg)
-    fs.appendFileSync(LOG_FILE_PATH, msg + '\n')
+    fs.appendFileSync(LOG_FILE_PATH, msg + '\n')   
   })
 
 const getDate = () => new Date().toISOString().replace('T', ' ').replace('Z', '')
