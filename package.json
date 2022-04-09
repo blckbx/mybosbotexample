@@ -14,11 +14,13 @@
     "lookup": "npm link balanceofsatoshis && node --optimize_for_size --max_old_space_size=200 tools/lookup.js",
     "isitsafetorestart": "npm link balanceofsatoshis && node --optimize_for_size --max_old_space_size=200 tools/isitsafetorestart.js",
     "getcapacityfees": "npm link balanceofsatoshis && node --optimize_for_size --max_old_space_size=200 tools/getCapacityFees.js",
-    "checkchans": "npm link balanceofsatoshis && node --optimize_for_size --max_old_space_size=200 tools/checkChans.js"
+    "checkchans": "npm link balanceofsatoshis && node --optimize_for_size --max_old_space_size=200 tools/checkChans.js",
+    "systemstats": "sudo node --optimize_for_size --max_old_space_size=200 tools/systemstats.js"
   },
   "author": "",
   "license": "MIT license",
   "dependencies": {
-  	"dotenv": "^16.0.0"
+  	"dotenv": "^16.0.0",
+    "systeminformation": "^5.11.9"
   }
 }
