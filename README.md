@@ -45,7 +45,7 @@ Tested configuration:
 - `MINUTES_BETWEEN_SIMPLE_RECONNECTS`: run simple reconnect every x minutes
 
 6) Fine Tuning:
-- Set rules for channels and rebalances (see settings.json): `aliasMatch`, `min_ppm`, `max_ppm`, `no_local_rebalance`, `no_remote_balance`, `max_htlc_sats`, `AVOID_LIST` (nodes to exclude from rebalancing (also in-path))
+- Set rules for channels and rebalances (see settings.json): `aliasMatch`, `min_ppm`, `max_ppm`, `no_local_rebalance`, `no_remote_balance`, `max_htlc_sats`, `AVOID_LIST` (nodes to exclude from rebalancing, even in-path)
 
 7) Start Commands:
 
