@@ -59,7 +59,7 @@ Tested configuration:
 - `npm run isitsafetorestart` starts [isItSafeToRestart](#-isitsafetorestart)
 - `npm run getcapacityfees`: starts [getCapacityFees](#-getcapacityfees)
 - `npm run checkchans`: starts [checkChans](#-checkchans)
-- `npm run systemstats`: fetches [system stats]() (optionally send to TG ⚠ Privacy! command requires `sudo` rights!)
+- `sudo npm run systemstats`: fetches [system stats]() (optionally send to TG ⚠ Privacy! command requires `sudo` rights!)
 
 ## **♾ Workflow:**
 
