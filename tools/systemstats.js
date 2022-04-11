@@ -15,7 +15,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') })
 
 // --- settings ---
 const getDay = () => new Date().toISOString().slice(0, 10)
-const LOG_FILE_PATH = `${path.resolve(process.cwd())}/logs/${getDay()}_sysdata.log`
+const LOG_FILE_PATH = `${path.resolve(process.cwd())}/../logs/${getDay()}_sysdata.log`
 
 // Telegram Settings - 
 // Caution! You are sending sensitive data to Telegram servers!
@@ -24,6 +24,9 @@ const TELEGRAM_CHATID = env.TELEGRAM_CHATID || ''
 const TELEGRAM_TOKEN = env.TELEGRAM_TOKEN || ''
 const TELEGRAM_PROXY_HOST = env.TELEGRAM_PROXY_HOST || ''
 const TELEGRAM_PROXY_PORT = env.TELEGRAM_PROXY_PORT || ''
+
+// services to monitor - adjust to your setup (comma separated, no spaces)
+const SERVICES = 'tor,bitcoind,lnd'
 
 // --- end of settings  ---
 
@@ -54,8 +57,8 @@ const run = async () => {
   const cpuLoadAvg = cpuLoad.avgLoad
   const cpuLoadSys = cpuLoad.currentLoadSystem.toFixed(2)
 
-  // services - add your services here
-  const servicesLoad = (await si.services('tor, bitcoind, lnd, electrs'))
+  // services
+  const servicesLoad = (await si.services(`${SERVICES}`))
   let servicesLoadData = ''
   servicesLoad.forEach(p => {
     if(p) {
@@ -87,7 +90,7 @@ const run = async () => {
     if(p) diskData += ` ${p.name} (${p.type}/${p.interfaceType}) | ${convertBytes(p.size)} | ${p.smartData?.temperature?.current ?? 'n/a'} °C | SMART Status: ${p.smartStatus}\n`
   })
 
-  // ups over usp - connection check
+  // ups over usb - connection check
   const usbDevices = (await si.usb())
   let upsIsActive = 'not connected'
   usbDevices.forEach(p => {
@@ -101,6 +104,7 @@ const run = async () => {
     if(p) interfacesString += ` ${p.iface.padEnd(10)} | type: ${p.type.padEnd(7)} | state: ${p.operstate.padEnd(7)} | speed: ${p.speed ?? 'n/a'}\n`
   })
 
+  // network stats
   const ifStats = (await si.networkStats())
   let ifMsg = ''
   ifStats.forEach(p => {
