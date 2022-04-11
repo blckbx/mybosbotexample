@@ -15,9 +15,9 @@ Tested configuration:
 ## **✏ Get Started / Usage / Management Switches:**
 
 1) Clone the repo: `git clone https://github.com/blckbx/bosbot.git`
-2) Create your own settings file: `cp .env .env.local` (prevents overwriting personal settings on update via `git pull` but mind changes made to `.env)
-3) Edit `nano .env.local` to your needs (see below).
-4) `npm install`: installs additional packages, see `package.json`
+2) Install required packages: `npm install` (see `package.json`)
+3) Create your own personal settings file: `cp .env .env.local` (prevents overwriting personal settings on updates via `git pull`. Mind changes made to `.env)
+4) Edit `nano .env.local` to your needs (see below).
 5) At the top of the file set which `MANAGEMENT SWITCHES` should be applied.
 
 - `ALLOW_BOS_RECONNECT`: BosBot checks for offline peers and tries to reconnect them within a given time period
