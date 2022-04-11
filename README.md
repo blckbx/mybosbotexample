@@ -516,19 +516,18 @@ services
  tor        | status: true | cpu %: x.xx  | mem %: x.x
  bitcoind   | status: true | cpu %: x.xx  | mem %: x.x
  lnd        | status: true | cpu %: x.xx  | mem %: x.x
- electrs    | status: true | cpu %: x.xx  | mem %: x.x
 
 memory: used: x.x GB / total: x.x GB
 swap:   used: x.x GB / total: x.x GB
 usb:    ups connected
 
 mounts
+ /dev/sda1  | x.x TB | x.x GB (x.x %) used
  /dev/sda2  | x.x TB | x.x GB (x.x %) used
- /dev/md0   | x.x TB | x.x GB (x.x %) used
 
 disks
- <name> (<type>/<interface>) | x.x TB | xx °C | SMART Status: Ok
- <name> (<type>/<interface>) | x.x TB | xx °C | SMART Status: Ok
+ <name> (<type>/<interface>) | x.x TB | xx °C | SMART Status: x
+ <name> (<type>/<interface>) | x.x TB | xx °C | SMART Status: x
 
 networks
  lo         | type: virtual | state: unknown | speed: n/a
