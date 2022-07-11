@@ -6,9 +6,9 @@ BosBot is designed to manage lightning nodes (rebalancing, fee adjustment, conne
 BosBot needs Balance of Satoshi (BoS: https://github.com/alexbosworth/balanceofsatoshis) globally [installed](https://gist.github.com/alexbosworth/8fad3d51f9e1ff67995713edf2d20126#setup-npm).
 
 Tested configuration:
-- [LND-0.14.3-beta](https://github.com/lightningnetwork/lnd/releases/tag/v0.14.2-beta)
-- [BoS 11.64.x](https://github.com/alexbosworth/balanceofsatoshis#install) 
-- [npm 8.5.5](https://gist.github.com/alexbosworth/8fad3d51f9e1ff67995713edf2d20126)
+- [LND-0.15.0-beta](https://github.com/lightningnetwork/lnd/releases/tag/v0.15.0-beta)
+- [BoS 12.0.2](https://github.com/alexbosworth/balanceofsatoshis#install) 
+- [npm 8.6.0](https://gist.github.com/alexbosworth/8fad3d51f9e1ff67995713edf2d20126)
 - [NodeJS LTS](https://nodejs.org)
 
 
