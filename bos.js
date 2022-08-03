@@ -2,15 +2,21 @@
   Wrapper for balanceofsatoshis installed globally
 //  Needs node v14+, node -v
   Installed with `npm i -g balanceofsatoshis`
-  Tested with lnd-0.14.2-beta, BoS 11.57.0
+  Tested with lnd-0.15.0-beta, BoS 12.16.3
   Linked via `npm link balanceofsatoshis`
+
+  It's unofficial independent wrapper so if anything changes this can break.
+  (e.g. changes in ln-service or bos functions, parameter names, output)
+  I just add wrappers here on need-to basis and some parts become abandoned.  
 */
 
-import { fetchRequest, callRawApi } from 'balanceofsatoshis/commands/index.js'
+import { fetchRequest
+  //, callRawApi
+ } from 'balanceofsatoshis/commands/index.js'
 import fetch from 'balanceofsatoshis/node_modules/@alexbosworth/node-fetch/lib/index.js'
 import { readFile } from 'fs'
 import lnd from 'balanceofsatoshis/lnd/index.js'
-import lnService from 'balanceofsatoshis/node_modules/ln-service/index.js'
+import lnServiceRaw from 'balanceofsatoshis/node_modules/ln-service/index.js'
 
 import {
   adjustFees as bosAdjustFees,
@@ -467,36 +473,59 @@ const setFees = async (peerPubKey, fee_rate, log = false) => {
   }
 }
 
-// bos call api commands to lnd
-// bos call getIdentity - get my pub key
-// bos call getChannels - on-chain channel info
-// bos call getNode { public_key, is_omitting_channels: false } - both fees, max/min htlc, updated_at, is_disabled, cltv_delta
-// bos call getFeeRates - has base fee info (via channel or tx ids, not pubkeys)
-// bos call updateRoutingFees - MUST set every value or it is set to default (https://github.com/alexbosworth/ln-service#updateroutingfees)
-// bos call getForwards - forwarding events, choices: either {limit: 5} or {token: `{"offset":10,"limit":5}`}
-// bos call getpeers - contains networking data like bytes sent/received/socket
-// names for methods and choices for arguments via `bos call` or here
-// https://github.com/alexbosworth/ln-service
-// https://github.com/alexbosworth/balanceofsatoshis/blob/master/commands/api.json
-// 'cltv_delta' can just be found in getChannel and getNode, not getChannels, not getFeeRates
-// ^ is set in updateRoutingFees
-// 'max_htlc_mtokens' and 'min_htlc_mtokens' in getChannel and getChannels (@ local_, remote_) and getNode, not getFeeRates
-// ^ updated just in updateRoutingFees
-// 'base_fee_mtokens' in getChannel and getFeeRates and getNode, not getChannels
-// ^ updated in updateRoutingFees
+
+// helpful wrapper to re-use bos auth if not provided
+// also handle errors via try/catch
+// returns null on error, otherwise response || empty object
+const lnServiceWrapped = {}
+for (const cmd in lnServiceRaw) {
+  lnServiceWrapped[cmd] = async (arg1, ...otherArgs) => {
+    try {
+      // if lnd auth was provided use it, otherwise try using bos one
+      if (typeof arg1 === 'object' && 'lnd' in arg1) {
+        return (await lnServiceRaw[cmd](arg1, ...otherArgs)) || {}
+      } else {
+        const arg1_mod = { ...arg1, lnd: authed ?? (await mylnd()) }
+        return (await lnServiceRaw[cmd](arg1_mod, ...otherArgs)) || {}
+      }
+    } catch (e) {
+      const argsUsed = [
+        { ...arg1, lnd: undefined },
+        ...otherArgs
+      ]
+      logDim(`${getDate()} wrapped lnService.${cmd}${JSON.stringify(argsUsed)} aborted.`, e?.message)
+      if (!e?.message) console.error(e)
+      return null
+    }
+  }
+}
+const lnService = lnServiceWrapped
+
+
+// just calls lnService directly using bos authorization
+// get method spelling, options, and expected output here:
+// https://github.com/alexbosworth/ln-service/blob/master/README.md#all-methods
+// instead of bos.callAPI('getChannels', { is_public: true })
+// can also do bos.lnService.getChannels({ lnd, is_public: true })
+// null on error
 const callAPI = async (method, choices = {}, log = false) => {
   try {
-    log && logDim(`${getDate()} bos.callAPI(${method})`)
-    const res = await callRawApi({
-      lnd: authed ?? (await mylnd()),
-      method,
-      ask: (u, cbk) => cbk(null, choices),
-      logger: logger(log)
+    // for compatibility w/ old method, e.g. 'getpeers' in ln-service has to be 'getPeers'
+    [['getpeers', 'getPeers']].forEach(r => {
+      if (r[0] === method) method = r[1]
     })
-    return copy(res) || {}
+    log && logDim(`${getDate()} lnService.${method}()`)
+    // handle bad calls
+    if (!(method in lnService)) throw new Error(`method ${method} doesn't exist in lnService`)
+    const res = await lnServiceRaw[method]({
+      lnd: authed ?? (await mylnd()),
+      ...choices
+    })
+    return res || {}
     // empty object if nothing good yet without caught errors
   } catch (e) {
-    log && logDim(`${getDate()} bos.callAPI('${method}', ${JSON.stringify(choices)}) aborted:`, e?.message)
+    logDim(`${getDate()} lnService.${method}(), ${JSON.stringify(choices)}) aborted.`, e?.message)
+    if (!e?.message) console.error(e)
     return null
   }
 }
@@ -510,7 +539,7 @@ const find = async (query, log = false) => {
       query
     })
   } catch (e) {
-    console.error(`${getDate()} bos.find('${query}') aborted:`, e)
+    console.error(`${getDate()} bos.find('${query}') aborted.`, e)
     return null
   }
 }
@@ -1082,7 +1111,7 @@ const setPeerPolicy = async (newPolicy, log = false) => {
 
 // bos call pay
 const callPay = async (choices, log = false) => {
-  log && logDim(`${getDate()} bos.call.pay() with ${JSON.stringify(choices)}`)
+  log && logDim(`${getDate()} bos.callPay() with ${JSON.stringify(choices)}`)
   const {
     invoice = null, // absolutely required
     maxFee = undefined, // max sats fee
@@ -1096,18 +1125,18 @@ const callPay = async (choices, log = false) => {
 
   // just abort if no invoice/request
   if (!invoice) {
-    log && console.log(`${getDate()} bos.call.pay() request/invoice required`)
+    log && console.log(`${getDate()} bos.callPay() request/invoice required`)
     return null
   }
 
   try {
-    const parsedInvoice = lnService.parsePaymentRequest({ request: invoice })
+    const parsedInvoice = lnServiceRaw.parsePaymentRequest({ request: invoice })
     const { tokens } = parsedInvoice
 
     // use smaller of constraints for fee
     const unspecifiedFee = maxFee === undefined && maxFeeRate === undefined
     if (unspecifiedFee) throw new Error('need to specify maxFeeRate or maxFee')
-    const effectiveMaxFee = maxFee ?? ceil(0.1 * tokens) // 10% as fallback if unspecified
+    const effectiveMaxFee = maxFee ?? ceil(0.1 * tokens) // max of 1 satoshi or 10% of sats sent as max fee
     const effectiveMaxFeeRate = maxFeeRate ?? trunc(((1.0 * maxFee) / tokens) * 1e6)
     const maxFeeUsed = min(effectiveMaxFee, ceil((tokens * effectiveMaxFeeRate) / 1e6))
 
@@ -1123,14 +1152,14 @@ const callPay = async (choices, log = false) => {
       pathfinding_timeout: trunc(maxMinutes * 60 * 1000),
       ...options
     }
-    log && console.log(`${getDate()} bos.call.pay(${JSON.stringify({ ...finalParams, lnd: undefined }, null, 2)})`)
+    log && console.log(`${getDate()} bos.callPay(${JSON.stringify({ ...finalParams, lnd: undefined }, null, 2)})`)
 
-    const res = await lnService.pay(finalParams)
+    const res = await lnServiceRaw.pay(finalParams)
 
-    log && console.log(`${getDate()} bos.call.pay() complete`, res)
+    log && console.log(`${getDate()} bos.callPay() complete`, res)
     return res
   } catch (e) {
-    console.error(`\n${getDate()} bos.call.pay() aborted:`, e?.message)
+    console.error(`\n${getDate()} bos.callPay() aborted:`, e?.message)
     return null
   }
 }
@@ -1192,7 +1221,7 @@ const getRemoteDisabledCount = async ({ public_key }) => {
 const removePeer = async ({ public_key }, log = true) => {
   log && logDim(`${getDate()} bos.removePeer(${JSON.stringify({ public_key })}) `)
   try {
-    const res = await lnService.removePeer({
+    const res = await lnServiceRaw.removePeer({
       lnd: authed ?? (await mylnd()),
       public_key
     })
@@ -1256,7 +1285,7 @@ const addPeer = async (choices, log = true) => {
       log &&
         logDim(`${getDate()} bos.addPeer(${shortKey}): ` + `trying socket ${i + 1}/${sockets.length}: ${sockets[i]}`)
       try {
-        const res = await lnService.addPeer({
+        const res = await lnServiceRaw.addPeer({
           lnd: authed ?? (await mylnd()),
           public_key,
           socket: sockets[i],
@@ -1351,7 +1380,7 @@ const logger = log => ({
   error: v => (log?.details ? console.error(getDate(), v) : log?.progress ? process.stdout.write('!') : null)
 })
 
-const copy = item => JSON.parse(JSON.stringify(item, fixJSON))
+// const copy = item => JSON.parse(JSON.stringify(item, fixJSON))
 
 const logDim = (...args) => setImmediate(() => console.log(`\x1b[2m${args.join(' ')}\x1b[0m`))
 
@@ -1408,6 +1437,8 @@ const bos = {
   initializeAuth,
   callPay,
   lnService,
+  lnServiceRaw,
+  lnServiceWrapped,
   getIdToPublicKeyTable,
   getPublicKeyToAliasTable,
   getIdToAliasTable,
