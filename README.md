@@ -7,8 +7,8 @@ BosBot needs Balance of Satoshi (BoS: https://github.com/alexbosworth/balanceofs
 
 Tested configuration:
 - [LND-0.15.0-beta](https://github.com/lightningnetwork/lnd/releases/tag/v0.15.0-beta)
-- [BoS 12.15.0](https://github.com/alexbosworth/balanceofsatoshis#install) (⚠️ BosBot breaks w/ BoS > v12.15.1 ⚠️)
-- [npm 8.6.0](https://gist.github.com/alexbosworth/8fad3d51f9e1ff67995713edf2d20126)
+- [BoS 12.16.3](https://github.com/alexbosworth/balanceofsatoshis#install)
+- [npm 8.11.0](https://gist.github.com/alexbosworth/8fad3d51f9e1ff67995713edf2d20126)
 - [NodeJS LTS](https://nodejs.org)
 
 
