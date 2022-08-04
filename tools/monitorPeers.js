@@ -223,6 +223,11 @@ const run = async () => {
       delete pastForwardEvents[fid] // clear up memory
       return null
     }
+    
+     // unresolved forwards with defined path
+    if (f.in_channel && f.out_channel) {
+      log(`⏳ forward pending: ${from} -> ${to} of ${amt} for ${fee}`)
+    }
 
     // just in case too many fids in memory clean it all up above some limit
     if (Object.keys(pastForwardEvents).length >= 555) {
