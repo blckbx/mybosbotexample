@@ -469,7 +469,6 @@ New features: Block private channel opening requests on-the-fly. Running `monito
     alias: xxx
     remote_pubkey: xxx
     channel_id: yyyyyxyyyyxy
-    coop_initiator: local | remote
     capacity: xxx sats
     local: xxx sats | xxx sats :remote
     funding_tx: 11111111111111111111111111111111111111:1
@@ -479,7 +478,6 @@ New features: Block private channel opening requests on-the-fly. Running `monito
     alias: xxx
     remote_pubkey: xxx
     channel_id: yyyyyxyyyyxy
-    force_close_initiator: local | remote
     capacity: xxx sats
     local: xxx sats | xxx sats :remote
     funding_tx: 11111111111111111111111111111111111111:1
