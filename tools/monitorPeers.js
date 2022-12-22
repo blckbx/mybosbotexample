@@ -276,13 +276,10 @@ const run = async () => {
     
     if (f.is_force_close) {
       
-      const force_initiator = (f.is_local_force_close ? 'local' : 'remote') || 'n/a'
-
       const message = `🥀 channel force-closed:
   alias: ${publicKeyToAlias[f.partner_public_key]}
   remote_pubkey: ${f.partner_public_key}
   channel_id: ${f.id}
-  force close origin: ${force_initiator}      
   capacity: ${pretty(f.capacity, 0)} sats
   local: ${pretty(f.final_local_balance, 0)} sats | ${pretty((f.capacity - f.final_local_balance), 0)} sats :remote
   funding_tx: ${f.transaction_id}:${f.transaction_vout}
@@ -292,13 +289,10 @@ const run = async () => {
 
     } else {
 
-      const coop_initiator = (f.is_partner_closed ? 'remote' : 'local') || 'n/a'
-
       const message = `🥀 channel coop-closed:
   alias: ${publicKeyToAlias[f.partner_public_key]}
   remote_pubkey: ${f.partner_public_key}
   channel_id: ${f.id}
-  coop close origin: ${coop_initiator}
   capacity: ${pretty(f.capacity, 0)} sats
   local: ${pretty(f.final_local_balance, 0)} sats | ${pretty((f.capacity - f.final_local_balance), 0)} sats :remote
   funding_tx: ${f.transaction_id}:${f.transaction_vout}
