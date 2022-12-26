@@ -21,6 +21,6 @@
   "license": "MIT license",
   "dependencies": {
   	"dotenv": "^16.0.3",
-    "systeminformation": "^5.12.11"
+    "systeminformation": "^5.16.9"
   }
 }
