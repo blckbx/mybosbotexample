@@ -16,7 +16,7 @@ const minutes = 60 * seconds;
 const LOG_FILE_PATH = "./logs"; // where to store yyyy-mm-dd_htlcLimiter.log files
 const MAX_RAM_USE_MB = null; // end process at _ MB usedHeap, set to null to disable
 const UPDATE_DELAY = 12 * seconds; // ms between re-checking active htlcs in each channel, effectively rate limiter
-const FEE_UPDATE_DELAY = 42 * minutes; // ms between re-checking channel policies
+const GC_ALIAS_UPDATE_DELAY = 42 * minutes; // ms between re-checking channel policies
 const LND_CHECK_DELAY = 2 * minutes; // ms between retrying lnd if issue
 
 // IN and OUT limits (htlcs) per channel
@@ -141,7 +141,7 @@ const updatePendingCounts = async ({ subForwardRequests }) => {
   }
 
   // occasionally gc and update peer aliases
-  if (Date.now() - lastPolicyCheck > FEE_UPDATE_DELAY) {
+  if (Date.now() - lastPolicyCheck > GC_ALIAS_UPDATE_DELAY) {
     // clean up previous data & log ram use (rarely)
     global?.gc?.();
 
@@ -204,9 +204,6 @@ const announce = (f, isAccepted) => {
     isAccepted ? "✅" : "❌",
     `${getSats(f)}`.padStart(10),
     " amt, ",
-    //`${getFee(f).toFixed(3)}`.padStart(9),
-    //" fee ",
-    //`~2^${getGroup(getFee(f))}`.padStart(7),
     (keyToAlias[idToKey[f.in_channel]] || f.in_channel)
       .slice(0, 20)
       .padStart(20),
