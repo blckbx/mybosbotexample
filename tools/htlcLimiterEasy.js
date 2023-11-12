@@ -21,8 +21,8 @@ const LND_CHECK_DELAY = 2 * minutes; // ms between retrying lnd if issue
 
 const ALLOWED_PER_GROUP_MAX = 6;
 
-const DEBUG = false;
-const PRINT_WHEN_HTLCS_RECOUNTED = false; // show when UPDATE_DELAY based recount of htlcs happens
+const DEBUG = true;
+const PRINT_WHEN_HTLCS_RECOUNTED = true; // show when UPDATE_DELAY based recount of htlcs happens
 
 const settings = {
   policies: {}, // fee rates
@@ -91,7 +91,7 @@ const decideOnForward = ({ f }) => {
     DEBUG &&
       printout(
         "decideOnForward",
-        stringify(f, fixJSON),
+        stringify(byChannel, fixJSON),
         stringify({ inboundCount, outboundCount })
       );
 
@@ -137,7 +137,7 @@ const updatePendingCounts = async ({ subForwardRequests }) => {
   if (Date.now() - lastPolicyCheck > GC_UPDATE_DELAY) {
     // clean up previous data & log ram use (rarely)
     global?.gc?.();
-    lastPolicyCheck = DateNow();
+    lastPolicyCheck = Date.Now();
   }
 
   // main goal is to see all existing unsettled htlcs in each channel every time this loops
@@ -159,9 +159,10 @@ const updatePendingCounts = async ({ subForwardRequests }) => {
   incomingCount = 0;
   for (const channel of channels) {
     idToKey[channel.id] = channel.partner_public_key;
-    byChannel[channel.id] = { raw: copy(channel.pending_payments) };
+    //byChannel[channel.id] = { raw: copy(channel.pending_payments) };
     for (const f of channel.pending_payments) {
       byChannel[channel.id] = (byChannel[channel.id] || 0) + 1;
+      //printout(`${channel.id}: ${byChannel[channel.id]}`)
       if (f.is_forward) pendingForwardCount++;
       else pendingOtherCount++;
       if (f.is_outgoing) outgoingCount++;
