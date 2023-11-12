@@ -91,8 +91,8 @@ const decideOnForward = ({ f }) => {
       printout(
         stringify(
           {
-            ...inboundCount,
-            ...outboundCount,
+            inboundCount,
+            outboundCount,
           },
           fixJSON
         )
