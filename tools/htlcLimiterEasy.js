@@ -16,9 +16,9 @@ const minutes = 60 * seconds;
 const LOG_FILE_PATH = "./logs"; // where to store yyyy-mm-dd_htlcLimiter.log files
 const MAX_RAM_USE_MB = null; // end process at _ MB usedHeap, set to null to disable
 const UPDATE_DELAY = 12 * seconds; // ms between re-checking active htlcs in each channel, effectively rate limiter
+const GC_UPDATE_DELAY = 42 * minutes // ms between garbage collection
 const LND_CHECK_DELAY = 2 * minutes; // ms between retrying lnd if issue
 
-const ALLOWED_PER_GROUP_MIN = 2; // smallest amount of htlcs allowed per channel
 const ALLOWED_PER_GROUP_MAX = 6;
 
 const DEBUG = false;
@@ -39,6 +39,7 @@ let pendingOtherCount = 0;
 let pendingForwardCount = 0;
 let outgoingCount = 0;
 let incomingCount = 0;
+let lastPolicyCheck = 0
 const keyToAlias = {};
 const idToKey = {};
 
@@ -89,13 +90,9 @@ const decideOnForward = ({ f }) => {
 
     DEBUG &&
       printout(
-        stringify(
-          {
-            inboundCount,
-            outboundCount,
-          },
-          fixJSON
-        )
+        "decideOnForward",
+        stringify(f, fixJSON),
+        stringify({ inboundCount, outboundCount })
       );
 
     // check if there're enough available slots in both incoming and outgoing channel
@@ -136,7 +133,12 @@ const updatePendingCounts = async ({ subForwardRequests }) => {
     return printout("htlcLimiter terminate signal detected"); // terminate loop & stop listening for requests
   }
 
-  global?.gc?.();
+  // occasionally update fee per channel data
+  if (Date.now() - lastPolicyCheck > GC_UPDATE_DELAY) {
+    // clean up previous data & log ram use (rarely)
+    global?.gc?.();
+    lastPolicyCheck = DateNow();
+  }
 
   // main goal is to see all existing unsettled htlcs in each channel every time this loops
   const res = await bos.callAPI("getChannels");
@@ -253,7 +255,7 @@ const getMemoryUsage = ({ quiet = false } = {}) => {
 };
 
 // const ca = alias => alias.replace(/[^\x00-\x7F]/g, '').trim()
-const fixJSON = (k, v) => (v === undefined ? null : v)
+const fixJSON = (k, v) => (v === undefined ? null : v);
 const copy = (item) => parse(stringify(item));
 
 // export default initialize
