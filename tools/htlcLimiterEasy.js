@@ -16,13 +16,13 @@ const minutes = 60 * seconds;
 const LOG_FILE_PATH = "./logs"; // where to store yyyy-mm-dd_htlcLimiter.log files
 const MAX_RAM_USE_MB = null; // end process at _ MB usedHeap, set to null to disable
 const UPDATE_DELAY = 12 * seconds; // ms between re-checking active htlcs in each channel, effectively rate limiter
-const GC_UPDATE_DELAY = 42 * minutes // ms between garbage collection
+const GC_UPDATE_DELAY = 42 * minutes; // ms between garbage collection
 const LND_CHECK_DELAY = 2 * minutes; // ms between retrying lnd if issue
 
 const ALLOWED_PER_GROUP_MAX = 6;
 
 const DEBUG = true;
-const PRINT_WHEN_HTLCS_RECOUNTED = true; // show when UPDATE_DELAY based recount of htlcs happens
+const PRINT_WHEN_HTLCS_RECOUNTED = false; // show when UPDATE_DELAY based recount of htlcs happens
 
 const settings = {
   policies: {}, // fee rates
@@ -39,7 +39,7 @@ let pendingOtherCount = 0;
 let pendingForwardCount = 0;
 let outgoingCount = 0;
 let incomingCount = 0;
-let lastPolicyCheck = 0
+let lastPolicyCheck = 0;
 const keyToAlias = {};
 const idToKey = {};
 
@@ -84,16 +84,11 @@ const decideOnForward = ({ f }) => {
   if (settings.stop) return f.reject(); // if stop all new forwards
 
   try {
-    // how many unsettled in this channel
+    // how many unsettled
     const inboundCount = byChannel[f.in_channel] ?? 0;
     const outboundCount = byChannel[f.out_channel] ?? 0;
 
-    DEBUG &&
-      printout(
-        "decideOnForward",
-        stringify(byChannel, fixJSON),
-        stringify({ inboundCount, outboundCount })
-      );
+    DEBUG && printout("decideOnForward", stringify(byChannel, fixJSON));
 
     // check if there're enough available slots in both incoming and outgoing channel
     const allowed =
@@ -137,7 +132,14 @@ const updatePendingCounts = async ({ subForwardRequests }) => {
   if (Date.now() - lastPolicyCheck > GC_UPDATE_DELAY) {
     // clean up previous data & log ram use (rarely)
     global?.gc?.();
-    lastPolicyCheck = Date.Now();
+
+    // grab aliases for convenient logging
+    const peers = (await bos.peers({})) || [];
+    peers.forEach((peer) => {
+      keyToAlias[peer.public_key] = ca(peer.alias);
+    });
+
+    lastPolicyCheck = Date.now();
   }
 
   // main goal is to see all existing unsettled htlcs in each channel every time this loops
@@ -186,9 +188,6 @@ const announce = (f, isAccepted) => {
     isAccepted ? "✅" : "❌",
     `${getSats(f)}`.padStart(10),
     " amt, ",
-    `${getFee(f).toFixed(3)}`.padStart(9),
-    " fee ",
-    `~2^${getGroup(getFee(f))}`.padStart(7),
     (keyToAlias[idToKey[f.in_channel]] || f.in_channel)
       .slice(0, 20)
       .padStart(20),
@@ -197,11 +196,11 @@ const announce = (f, isAccepted) => {
       .slice(0, 20)
       .padEnd(20),
     `all: {is_forward: ${pendingForwardCount}, other: ${pendingOtherCount}, out: ${outgoingCount}, in: ${incomingCount}}`,
-    f.in_channel.padStart(15),
-    stringify({ ...byChannel[f.in_channel], raw: undefined }),
-    "->",
-    f.out_channel.padEnd(15),
-    stringify({ ...byChannel[f.out_channel], raw: undefined }),
+    //f.in_channel.padStart(15),
+    //stringify({ ...byChannel[f.in_channel], raw: undefined }),
+    //"->",
+    //f.out_channel.padEnd(15),
+    //stringify({ ...byChannel[f.out_channel], raw: undefined }),
     settings.stop ? "(stopped)" : ""
   );
 };
@@ -255,9 +254,8 @@ const getMemoryUsage = ({ quiet = false } = {}) => {
   return { heapTotal, heapUsed, external, rss };
 };
 
-// const ca = alias => alias.replace(/[^\x00-\x7F]/g, '').trim()
+const ca = (alias) => alias.replace(/[^\x00-\x7F]/g, "").trim();
 const fixJSON = (k, v) => (v === undefined ? null : v);
-const copy = (item) => parse(stringify(item));
 
 // export default initialize
 initialize(true); // uncomment this to run from terminal
