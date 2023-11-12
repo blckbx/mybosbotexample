@@ -128,7 +128,7 @@ const updatePendingCounts = async ({ subForwardRequests }) => {
     return printout("htlcLimiter terminate signal detected"); // terminate loop & stop listening for requests
   }
 
-  // occasionally update fee per channel data
+  // occasionally gc and update aliases
   if (Date.now() - lastPolicyCheck > GC_UPDATE_DELAY) {
     // clean up previous data & log ram use (rarely)
     global?.gc?.();
