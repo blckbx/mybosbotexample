@@ -191,7 +191,7 @@ const updatePendingCounts = async ({ subForwardRequests }) => {
   PRINT_WHEN_HTLCS_RECOUNTED && printout(`${channels.length} channels parsed`);
   if (DEBUG && MAX_RAM_USE_MB) getMemoryUsage();
 
-  // delay and also rate-limit
+  // delay and also rate-limiting
   await sleep(UPDATE_DELAY);
 
   // loop
