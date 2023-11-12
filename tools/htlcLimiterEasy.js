@@ -15,8 +15,8 @@ const minutes = 60 * seconds;
 // settings
 const LOG_FILE_PATH = "./logs"; // where to store yyyy-mm-dd_htlcLimiter.log files
 const MAX_RAM_USE_MB = null; // end process at _ MB usedHeap, set to null to disable
-const UPDATE_DELAY = 12 * seconds; // ms between re-checking active htlcs in each channel, effectively rate limiter
-const GC_ALIAS_UPDATE_DELAY = 42 * minutes; // ms between re-checking channel policies
+const UPDATE_DELAY = 10 * seconds; // ms between re-checking active htlcs in each channel, effectively rate limiter
+const GC_ALIAS_UPDATE_DELAY = 30 * minutes; // ms between re-checking channel policies
 const LND_CHECK_DELAY = 2 * minutes; // ms between retrying lnd if issue
 
 // IN and OUT limits (htlcs) per channel
@@ -91,12 +91,12 @@ const decideOnForward = ({ f }) => {
 
   try {
     // same group for every htlc
-    //const group = 0;
+    const group = "htlcs";
 
     // how many unsettled in latest byChannel snapshot 
     // for both channels in forward request
-    const inboundCount = byChannel[f.in_channel]?.[0] ?? 0;
-    const outboundCount = byChannel[f.out_channel]?.[0] ?? 0;
+    const inboundCount = byChannel[f.in_channel]?.[group] ?? 0;
+    const outboundCount = byChannel[f.out_channel]?.[group] ?? 0;
 
     // ruleset: check if there're enough available slots 
     // in both incoming and outgoing channel for request
@@ -110,8 +110,8 @@ const decideOnForward = ({ f }) => {
       // this htlc will be in 2 channels so add to their counters
       if (!byChannel[f.in_channel]) byChannel[f.in_channel] = {};
       if (!byChannel[f.out_channel]) byChannel[f.out_channel] = {};
-      byChannel[f.in_channel][0] = inboundCount + 1;
-      byChannel[f.out_channel][0] = outboundCount + 1;
+      byChannel[f.in_channel][group] = inboundCount + 1;
+      byChannel[f.out_channel][group] = outboundCount + 1;
       pendingForwardCount += 2;
       outgoingCount++;
       incomingCount++;
@@ -178,8 +178,7 @@ const updatePendingCounts = async ({ subForwardRequests }) => {
     idToKey[channel.id] = channel.partner_public_key;
     byChannel[channel.id] = { raw: copy(channel.pending_payments) };
     for (const f of channel.pending_payments) {
-      const group = 0;
-      byChannel[channel.id][group] = (byChannel[channel.id][group] || 0) + 1;
+      byChannel[channel.id]["htlcs"] = (byChannel[channel.id]["htlcs"] || 0) + 1;
       if (f.is_forward) pendingForwardCount++;
       else pendingOtherCount++;
       if (f.is_outgoing) outgoingCount++;
