@@ -19,15 +19,14 @@ const UPDATE_DELAY = 12 * seconds; // ms between re-checking active htlcs in eac
 const FEE_UPDATE_DELAY = 42 * minutes; // ms between re-checking channel policies
 const LND_CHECK_DELAY = 2 * minutes; // ms between retrying lnd if issue
 
-// IN and OUT limits (htlcs)
-const ALLOW_IN_PER_CHANNEL = 2;
-const ALLOW_OUT_PER_CHANNEL = 2;
+// IN and OUT limits (htlcs) per channel
+const ALLOW_IN_PER_CHANNEL = 10; // allow number of htlcs incoming
+const ALLOW_OUT_PER_CHANNEL = 10; // allow number of htlcs outgoing
 
-const DEBUG = false;
+const DEBUG = false; // debug logs
 const PRINT_WHEN_HTLCS_RECOUNTED = false; // show when UPDATE_DELAY based recount of htlcs happens
 
 const settings = {
-  policies: {}, // fee rates
   auth: undefined, // auth object for re-use
   showLogs: true, // print to stdout/terminal
   fileLogs: true, // print to file
@@ -45,9 +44,6 @@ let lastPolicyCheck = 0;
 const keyToAlias = {};
 const idToKey = {};
 
-// same group for every htlc
-const getGroup = (n) => n * 0;
-
 // starts everything
 const initialize = async (
   showLogs = true,
@@ -58,18 +54,21 @@ const initialize = async (
   settings.fileLogs = fileLogs;
 
   printout("started");
+
+  // get LND authorization
   if (auth) settings.auth = await bos.initializeAuth({ providedAuth: auth });
   if (!auth) settings.auth = await bos.initializeAuth();
 
   try {
-    // will now be listening to events about forwarding requests
+    // listen to forwarding requests events
     const subForwardRequests = subscribeToForwardRequests({
       lnd: settings.auth,
     });
     subForwardRequests.on("forward_request", (f) =>
       decideOnForward({ f, showLogs })
     );
-    // DEBUG && printout('new request', stringify({ ...forward, onion: undefined, hash: f.hash?.slice(0, 5) }, fixJSON))
+
+    //DEBUG && printout('new request', stringify({ ...forward, onion: undefined, hash: f.hash?.slice(0, 5) }, fixJSON))
 
     // starts infinite async loop of updating snapshots of in flight htlcs for all channels
     updatePendingCounts({ subForwardRequests, showLogs });
@@ -87,35 +86,41 @@ const initialize = async (
 
 // decide to allow or block forward request
 const decideOnForward = ({ f }) => {
-  if (settings.stop) return f.reject(); // f.reject() // if stop all new forwards
+  // file based stop signal
+  if (settings.stop) return f.reject(); // if stop all new forwards
 
   try {
     // same group for every htlc
-    const group = 0;
+    //const group = 0;
 
-    // how many unsettled in this fee group in latest byChannel snapshot for both channels in forward request
-    const inboundCount = byChannel[f.in_channel]?.[group] ?? 0;
-    const outboundCount = byChannel[f.out_channel]?.[group] ?? 0;
+    // how many unsettled in latest byChannel snapshot 
+    // for both channels in forward request
+    const inboundCount = byChannel[f.in_channel]?.[0] ?? 0;
+    const outboundCount = byChannel[f.out_channel]?.[0] ?? 0;
 
-    // check if for this fee group there's enough available slots in both incoming and outgoing channel for request
+    // ruleset: check if there're enough available slots 
+    // in both incoming and outgoing channel for request
     const allowed =
       inboundCount < ALLOW_IN_PER_CHANNEL &&
       outboundCount < ALLOW_OUT_PER_CHANNEL;
 
-    // snapshots aren't updated real time, so we update counts for tx we allow manually
+    // snapshots aren't updated real time, so we update 
+    // counts for htlcs we allow manually
     if (allowed) {
       // this htlc will be in 2 channels so add to their counters
       if (!byChannel[f.in_channel]) byChannel[f.in_channel] = {};
       if (!byChannel[f.out_channel]) byChannel[f.out_channel] = {};
-      byChannel[f.in_channel][group] = inboundCount + 1;
-      byChannel[f.out_channel][group] = outboundCount + 1;
+      byChannel[f.in_channel][0] = inboundCount + 1;
+      byChannel[f.out_channel][0] = outboundCount + 1;
       pendingForwardCount += 2;
       outgoingCount++;
       incomingCount++;
     }
 
+    // allow or reject based on ruleset
     const result = allowed ? f.accept() : f.reject();
 
+    // print to log
     announce(f, allowed);
 
     return result;
@@ -124,17 +129,18 @@ const decideOnForward = ({ f }) => {
   }
 };
 
-// loop that updates all channel unsettled tx counts & more rarely checks fee policy
+// loop that updates all channel unsettled tx counts 
+// and more rarely checks fee policy
 const updatePendingCounts = async ({ subForwardRequests }) => {
   // stop signal check
-  if (settings.stop) return printout("htlcLimiter stop signal detected"); // terminate loop
+  if (settings.stop) return printout("htlcLimiter stop signal detected");
   // terminat signal check
   if (settings.terminate) {
     subForwardRequests.removeAllListeners();
-    return printout("htlcLimiter terminate signal detected"); // terminate loop & stop listening for requests
+    return printout("htlcLimiter terminate signal detected");
   }
 
-  // occasionally update fee per channel data
+  // occasionally gc and update peer aliases
   if (Date.now() - lastPolicyCheck > FEE_UPDATE_DELAY) {
     // clean up previous data & log ram use (rarely)
     global?.gc?.();
@@ -148,7 +154,8 @@ const updatePendingCounts = async ({ subForwardRequests }) => {
     lastPolicyCheck = Date.now();
   }
 
-  // main goal is to see all existing unsettled htlcs in each channel every time this loops
+  // main goal is to see all existing unsettled htlcs 
+  // in each channel every time this loops
   const res = await bos.callAPI("getChannels");
   // if lnd issue, keep trying until fixed and then reinitialize
   if (!res) {
@@ -184,27 +191,22 @@ const updatePendingCounts = async ({ subForwardRequests }) => {
   PRINT_WHEN_HTLCS_RECOUNTED && printout(`${channels.length} channels parsed`);
   if (DEBUG && MAX_RAM_USE_MB) getMemoryUsage();
 
-  // delay
+  // delay and also rate-limit
   await sleep(UPDATE_DELAY);
 
   // loop
   setImmediate(() => updatePendingCounts({ subForwardRequests }));
 };
 
-const getSats = (f) => f.tokens; // get sats routed
-const getFee = (f, channelUpdate = false, foundId = null) => {
-  // put all forwards into same fee group 0
-  return 0;
-};
-
+// log message
 const announce = (f, isAccepted) => {
   printout(
     isAccepted ? "✅" : "❌",
     `${getSats(f)}`.padStart(10),
     " amt, ",
-    `${getFee(f).toFixed(3)}`.padStart(9),
-    " fee ",
-    `~2^${getGroup(getFee(f))}`.padStart(7),
+    //`${getFee(f).toFixed(3)}`.padStart(9),
+    //" fee ",
+    //`~2^${getGroup(getFee(f))}`.padStart(7),
     (keyToAlias[idToKey[f.in_channel]] || f.in_channel)
       .slice(0, 20)
       .padStart(20),
@@ -222,6 +224,11 @@ const announce = (f, isAccepted) => {
   );
 };
 
+// helpers
+const getSats = (f) => f.tokens; // get sats routed
+const ca = (alias) => alias.replace(/[^\x00-\x7F]/g, "").trim();
+//const fixJSON = (k, v) => (v === undefined ? null : v);
+const copy = (item) => parse(stringify(item));
 const sleep = async (ms) =>
   await new Promise((resolve) => setTimeout(resolve, ms));
 const getDate = (timestamp) =>
@@ -249,6 +256,7 @@ const printout = (...args) => {
   }
 };
 
+// debug function to analyze memory usage
 const getMemoryUsage = ({ quiet = false } = {}) => {
   const memUse = process.memoryUsage();
   const heapTotal = +(memUse.heapTotal / 1024 / 1024).toFixed(0);
@@ -271,9 +279,6 @@ const getMemoryUsage = ({ quiet = false } = {}) => {
   return { heapTotal, heapUsed, external, rss };
 };
 
-const ca = (alias) => alias.replace(/[^\x00-\x7F]/g, "").trim();
-const fixJSON = (k, v) => (v === undefined ? null : v);
-const copy = (item) => parse(stringify(item));
 
 // export default initialize
 initialize(true); // uncomment this to run from terminal
