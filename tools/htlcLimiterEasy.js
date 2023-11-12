@@ -130,7 +130,7 @@ const decideOnForward = ({ f }) => {
 };
 
 // loop that updates all channel unsettled tx counts 
-// and more rarely checks fee policy
+// and more rarely checks peer aliases and gc
 const updatePendingCounts = async ({ subForwardRequests }) => {
   // stop signal check
   if (settings.stop) return printout("htlcLimiter stop signal detected");
