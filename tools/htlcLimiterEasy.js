@@ -159,7 +159,7 @@ const updatePendingCounts = async ({ subForwardRequests }) => {
     idToKey[channel.id] = channel.partner_public_key;
     byChannel[channel.id] = { raw: copy(channel.pending_payments) };
     for (const f of channel.pending_payments) {
-      byChannel[channel.id] = (byChannel[channel.id] ?? 0) + 1;
+      byChannel[channel.id] = (byChannel[channel.id] || 0) + 1;
       if (f.is_forward) pendingForwardCount++;
       else pendingOtherCount++;
       if (f.is_outgoing) outgoingCount++;
