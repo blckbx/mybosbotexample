@@ -50,7 +50,6 @@ Tested configuration:
 7) Start Commands:
 
 - `npm start` : starts [BosBot](#-workflow)
-- `npm run limiter` : starts [htlcLimiter](#-htlc-limiter--firewall) (logs to screen and file `limiter.log`)
 - `npm run monitor` : starts [monitorPeers](#-monitorpeers) (logs to screen and file `events.log`)
 - `npm run visualize` : starts [visualizer](#-visualization)
 - `npm run nodesinpaths` : starts [nodesInPaths](#-nodes-in-paths)
@@ -147,29 +146,6 @@ Channel C     max htlc:   1_048_576
 Channel D     max htlc:   2_097_152
 Channel E     max htlc:   4_194_304
 Channel F     max htlc:   8_388_608
-````
-
-
-## **🛡 HTLC Limiter / Firewall:**
-
-A module to watch and limit numbers of pending htlcs per channel based on fee policies. In parallel BosBot watches for forwarding requests, calculates the htlc's fee and adds the forward to its fee range (currently 2^X). If the number of pending htlcs within a given fee range exceeds the limit, the forward is rejected. For now there are more htlcs allowed for outgoing than incoming direction. Also it acts as a rate limiter for htlcs. Run `npm run limiter` to start (separate terminal window recommended).
-````
-htlcLimiter() ✅       8123  amt,      5.736  fee     ~2^2 Channel A -> Channel B       all: {is_forward: 4, other: 3, out: 5, in: 2}   666666x1111x1 {"1":1,"2":1} -> 777777x2222x1   {"2":1} 
-htlcLimiter() ✅       3353  amt,      1.231  fee     ~2^0 Channel A -> Channel C       all: {is_forward: 6, other: 3, out: 6, in: 3}   666666x1111x1 {"0":1,"1":1,"2":1} -> 694035x2032x1   {"0":1,"1":1} 
-htlcLimiter() ✅       1649  amt,      1.061  fee     ~2^0 Channel A -> Channel D       all: {is_forward: 2, other: 4, out: 4, in: 2}   666666x1111x1 {"0":2} -> 777777x2222x1   {"0":1} 
-htlcLimiter() ❌       1652  amt,      1.062  fee     ~2^0 Channel A -> Channel D       all: {is_forward: 2, other: 4, out: 4, in: 2}   666666x1111x1 {"0":2} -> 777777x2222x1   {"0":1} 
-htlcLimiter() ✅       8123  amt,      5.736  fee     ~2^2 Channel A -> Channel D       all: {is_forward: 4, other: 4, out: 5, in: 3}   666666x1111x1 {"0":2,"2":1} -> 777777x2222x1   {"2":1} 
-htlcLimiter() ✅       1652  amt,      1.196  fee     ~2^0 Channel A -> Channel F       all: {is_forward: 4, other: 4, out: 5, in: 3}   666666x1111x1 {"0":2,"2":1} -> 777777x2222x1   {"0":1} 
-htlcLimiter() ✅       1652  amt,      1.196  fee     ~2^0 Channel A -> Channel F       all: {is_forward: 2, other: 3, out: 4, in: 1}   666666x1111x1 {"0":1} -> 777777x2222x1   {"0":1} 
-htlcLimiter() ✅       8348  amt,      2.470  fee     ~2^1 Channel A -> Channel B       all: {is_forward: 4, other: 3, out: 5, in: 2}   666666x1111x1 {"0":1,"1":1} -> 777777x2222x1   {"1":1} 
-htlcLimiter() ✅       8123  amt,      5.736  fee     ~2^2 Channel A -> Channel C       all: {is_forward: 6, other: 3, out: 6, in: 3}   666666x1111x1 {"0":1,"1":1,"2":1} -> 777777x2222x1   {"2":1} 
-htlcLimiter() ✅       8123  amt,      5.736  fee     ~2^2 Channel A -> Channel C       all: {is_forward: 2, other: 3, out: 4, in: 1}   666666x1111x1 {"2":1} -> 777777x2222x1   {"2":1} 
-htlcLimiter() ✅       8343  amt,      2.469  fee     ~2^1 Channel A -> Channel B       all: {is_forward: 4, other: 3, out: 5, in: 2}   666666x1111x1 {"1":1,"2":1} -> 777777x2222x1   {"1":1} 
-htlcLimiter() ✅       8123  amt,      5.736  fee     ~2^2 Channel A -> Channel D       all: {is_forward: 4, other: 5, out: 7, in: 2}   666666x1111x1 {"1":1,"2":1} -> 777777x2222x1   {"2":1} 
-htlcLimiter() ✅       5022  amt,      1.645  fee     ~2^0 Channel A -> Channel B       all: {is_forward: 6, other: 5, out: 8, in: 3}   666666x1111x1 {"0":1,"1":1,"2":1} -> 777777x2222x1   {"0":1,"1":1} 
-htlcLimiter() ❌       8261  amt,      1.622  fee     ~2^0 Channel A -> Channel E       all: {is_forward: 0, other: 5, out: 5, in: 0}   666666x1111x1 {} -> 777777x2222x1   {"0":3} 
-htlcLimiter() ✅       8261  amt,      2.448  fee     ~2^1 Channel A -> Channel C       all: {is_forward: 2, other: 5, out: 6, in: 1}   666666x1111x1 {"1":1} -> 777777x2222x1   {"1":1} 
-htlcLimiter() ✅       8123  amt,      5.736  fee     ~2^2 Channel A -> Channel B       all: {is_forward: 2, other: 5, out: 6, in: 1}   666666x1111x1 {"2":1} -> 777777x2222x1   {"2":1} 
 ````
 
 
