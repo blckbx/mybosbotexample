@@ -146,11 +146,13 @@ ${ifMsg}`
 
 // uses telegram logging if available
 const telegramLog = async message => {
+  const token = TELEGRAM_TOKEN
+  const chat_id = TELEGRAM_CHATID
   if(!TELEGRAM_TOKEN || !TELEGRAM_CHATID) return null
   
   let proxy = ''
   if(TELEGRAM_PROXY_HOST != '' && TELEGRAM_PROXY_PORT != '') { proxy = `socks://${TELEGRAM_PROXY_HOST}:${TELEGRAM_PROXY_PORT}` }
-  if (TELEGRAM_TOKEN && TELEGRAM_CHATID) await bos.sayWithTelegramBot({ TELEGRAM_TOKEN, TELEGRAM_CHATID, message, proxy })
+  if (TELEGRAM_TOKEN && TELEGRAM_CHATID) await bos.sayWithTelegramBot({ token, chat_id, message, proxy })
 }
 
 const convertBytes = function(bytes) {
